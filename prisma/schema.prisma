@@ -1,0 +1,499 @@
+// AOJ Engage — data model
+// Idempotency is enforced with unique constraints (see Campaign, AutomationRun,
+// CampaignRecipient, Notification.dedupeKey) so retries and repeated cron runs
+// can never produce duplicate sends.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_UNPOOLED")
+}
+
+enum Role {
+  SUPER_ADMIN
+  COMMS_OFFICER
+  HR
+  APPROVER
+  AUDITOR
+}
+
+enum Audience {
+  INTERNAL
+  EXTERNAL
+  BOTH
+}
+
+enum ContactCategory {
+  STAFF
+  MANAGEMENT
+  CONTRACTOR
+  CUSTOMER
+  FORMER_CUSTOMER
+  PARTNER
+  PROSPECT
+  SUPPLIER
+  CONSULTANT
+  STAKEHOLDER
+}
+
+enum ContactStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum ConsentStatus {
+  GRANTED
+  WITHDRAWN
+  UNKNOWN
+}
+
+enum EventCategory {
+  PUBLIC_HOLIDAY
+  RELIGIOUS
+  INTERNATIONAL
+  COMPANY
+  RECURRING
+}
+
+enum EventRule {
+  FIXED // month + day every year
+  EASTER // offset (days) from Western Easter Sunday
+  MOVABLE // dates entered per year (EventDate), provisional until confirmed
+  ONCE // single date (EventDate)
+}
+
+enum CampaignType {
+  ONE_TIME
+  RECURRING
+  EVENT
+  BIRTHDAY
+  ANNIVERSARY
+  ANNOUNCEMENT
+  RELATIONSHIP
+  PROJECT
+}
+
+enum CampaignStatus {
+  DRAFT
+  AWAITING_APPROVAL
+  CHANGES_REQUESTED
+  APPROVED
+  SCHEDULED
+  PROCESSING
+  SENT
+  PARTIALLY_DELIVERED
+  FAILED
+  PAUSED
+  CANCELLED
+}
+
+enum RecipientStatus {
+  QUEUED
+  SENDING
+  ACCEPTED
+  DELIVERED
+  BOUNCED
+  COMPLAINED
+  REJECTED
+  FAILED
+  SUPPRESSED
+}
+
+enum ApprovalDecision {
+  SUBMITTED
+  APPROVED
+  REJECTED
+  CHANGES_REQUESTED
+}
+
+enum TriggerType {
+  WEEKLY
+  MONTHLY
+  CALENDAR_EVENT
+  BIRTHDAY
+  WORK_ANNIVERSARY
+  RELATIONSHIP_ANNIVERSARY
+}
+
+enum AutomationStatus {
+  ACTIVE
+  PAUSED
+  DISABLED
+}
+
+enum RunStatus {
+  CREATED
+  SKIPPED
+  FAILED
+}
+
+enum SuppressionReason {
+  HARD_BOUNCE
+  COMPLAINT
+  UNSUBSCRIBE
+  MANUAL
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String
+  role         Role
+  department   String?
+  position     String?
+  passwordHash String
+  active       Boolean   @default(true)
+  failedLogins Int       @default(0)
+  lockedUntil  DateTime?
+  lastLoginAt  DateTime?
+  sessionEpoch Int       @default(0) // bump to invalidate all sessions
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  auditLogs     AuditLog[]
+  approvals     Approval[]
+  notifications Notification[]
+}
+
+model Contact {
+  id                    String          @id @default(cuid())
+  firstName             String
+  lastName              String
+  preferredName         String?
+  email                 String          @unique // stored lower-case
+  phone                 String?
+  category              ContactCategory
+  organisation          String?
+  jobTitle              String?
+  department            String?
+  city                  String?
+  birthMonth            Int?
+  birthDay              Int?
+  birthYear             Int?
+  anniversary           DateTime?       @db.Date
+  status                ContactStatus   @default(ACTIVE)
+  marketingConsent      ConsentStatus   @default(UNKNOWN)
+  birthdayCommsAllowed  Boolean         @default(true)
+  notes                 String?
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+
+  staffProfile    StaffProfile?
+  customerProfile CustomerProfile?
+  recipients      CampaignRecipient[]
+  consents        ConsentRecord[]
+  projects        Project[]
+
+  @@index([category, status])
+  @@index([birthMonth, birthDay])
+}
+
+model StaffProfile {
+  contactId                  String    @id
+  contact                    Contact   @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  dateJoined                 DateTime? @db.Date
+  employmentStatus           String    @default("Active")
+  manager                    String?
+  birthdayVisibleToColleagues Boolean  @default(false)
+}
+
+model CustomerProfile {
+  contactId           String    @id
+  contact             Contact   @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  relationshipManager String?
+  customerCategory    String?
+  firstEngagement     DateTime? @db.Date
+  language            String    @default("English")
+  relationshipStatus  String    @default("Active")
+}
+
+model Project {
+  id        String   @id @default(cuid())
+  name      String
+  contactId String
+  contact   Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  stage     String   @default("Awarded") // Awarded, Commenced, Milestone, Completed, Maintenance
+  location  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ConsentRecord {
+  id        String        @id @default(cuid())
+  contactId String
+  contact   Contact       @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  status    ConsentStatus
+  source    String // e.g. "Manual entry", "Import", "Unsubscribe link"
+  note      String?
+  byUserId  String?
+  createdAt DateTime      @default(now())
+}
+
+model Segment {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  audience    Audience
+  rules       Json // see src/lib/segments.ts SegmentRules
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  campaigns   Campaign[]
+}
+
+model CalendarEvent {
+  id            String        @id @default(cuid())
+  key           String?       @unique // stable key for seeded occasions
+  name          String
+  description   String?
+  category      EventCategory
+  rule          EventRule
+  month         Int?
+  day           Int?
+  easterOffset  Int?
+  audience      Audience      @default(BOTH)
+  active        Boolean       @default(true)
+  reminderDays  Int[]         @default([14, 7, 3, 1])
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  dates         EventDate[]
+  automations   Automation[]
+}
+
+model EventDate {
+  id          String        @id @default(cuid())
+  eventId     String
+  event       CalendarEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  year        Int
+  date        DateTime      @db.Date
+  confirmed   Boolean       @default(false)
+  source      String?
+  confirmedBy String?
+
+  @@unique([eventId, year])
+}
+
+model Template {
+  id             String   @id @default(cuid())
+  key            String?  @unique
+  name           String
+  category       String // e.g. "New Week", "Birthday", "Festive"
+  audience       Audience
+  department     String   @default("Communications")
+  active         Boolean  @default(true)
+  currentVersion Int      @default(1)
+  createdBy      String?
+  updatedBy      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  versions       TemplateVersion[]
+  automations    Automation[]
+}
+
+model TemplateVersion {
+  id         String   @id @default(cuid())
+  templateId String
+  template   Template @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  version    Int
+  subject    String
+  preheader  String?
+  blocks     Json // EmailBlock[] — immutable once written
+  note       String?
+  createdBy  String?
+  createdAt  DateTime @default(now())
+
+  campaigns  Campaign[]
+
+  @@unique([templateId, version])
+}
+
+model Campaign {
+  id                String         @id @default(cuid())
+  name              String
+  type              CampaignType
+  audience          Audience
+  status            CampaignStatus @default(DRAFT)
+  templateVersionId String
+  templateVersion   TemplateVersion @relation(fields: [templateVersionId], references: [id])
+  segmentId         String?
+  segment           Segment?       @relation(fields: [segmentId], references: [id])
+  senderIdentity    String
+  isMarketing       Boolean        @default(false) // marketing requires consent; operational/project/internal does not
+  scheduledAt       DateTime?
+  eventName         String?
+  eventDate         String? // YYYY-MM-DD (Africa/Lagos)
+  requiresApproval  Boolean        @default(true)
+  revision          Int            @default(1)
+  approvedRevision  Int?
+  createdBy         String?
+  automationId      String?
+  automation        Automation?    @relation(fields: [automationId], references: [id])
+  occurrenceKey     String?
+  completedAt       DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  recipients        CampaignRecipient[]
+  approvals         Approval[]
+  runs              AutomationRun[]
+
+  // A given automation occurrence can only ever produce one campaign.
+  @@unique([automationId, occurrenceKey])
+  @@index([status, scheduledAt])
+}
+
+model CampaignRecipient {
+  id                String          @id @default(cuid())
+  campaignId        String
+  campaign          Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contactId         String
+  contact           Contact         @relation(fields: [contactId], references: [id])
+  email             String
+  status            RecipientStatus @default(QUEUED)
+  reason            String?
+  attempts          Int             @default(0)
+  nextAttemptAt     DateTime?
+  providerMessageId String?         @unique
+  sentAt            DateTime?
+  lastEventAt       DateTime?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  events            DeliveryEvent[]
+
+  // One delivery record per contact per campaign — the core duplicate guard.
+  @@unique([campaignId, contactId])
+  @@index([status, nextAttemptAt])
+  @@index([contactId, sentAt])
+}
+
+model DeliveryEvent {
+  id          String            @id @default(cuid())
+  recipientId String
+  recipient   CampaignRecipient @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  type        String // QUEUED, ACCEPTED, DELIVERY, BOUNCE, COMPLAINT, REJECT, FAILED, RETRY, SUPPRESSED
+  detail      String?
+  createdAt   DateTime          @default(now())
+}
+
+model Approval {
+  id         String           @id @default(cuid())
+  campaignId String
+  campaign   Campaign         @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  revision   Int // the exact campaign revision this decision applies to
+  decision   ApprovalDecision
+  comment    String?
+  userId     String
+  user       User             @relation(fields: [userId], references: [id])
+  createdAt  DateTime         @default(now())
+}
+
+model Automation {
+  id               String           @id @default(cuid())
+  key              String?          @unique
+  name             String
+  description      String?
+  status           AutomationStatus @default(ACTIVE)
+  trigger          TriggerType
+  weekday          Int? // 1 = Monday … 7 = Sunday (WEEKLY)
+  dayOfMonth       Int? // MONTHLY
+  sendTime         String           @default("08:00") // HH:mm Africa/Lagos
+  eventId          String?
+  event            CalendarEvent?   @relation(fields: [eventId], references: [id])
+  // Conditions
+  audience         Audience
+  categories       ContactCategory[]
+  segmentId        String?
+  requireActive    Boolean          @default(true)
+  // Action
+  templateId       String
+  template         Template         @relation(fields: [templateId], references: [id])
+  senderIdentity   String
+  isMarketing      Boolean          @default(false)
+  requiresApproval Boolean          @default(false) // false = pre-approved by automation policy
+  leadDays         Int              @default(3) // how far ahead the campaign is prepared
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  runs             AutomationRun[]
+  campaigns        Campaign[]
+}
+
+model AutomationRun {
+  id            String        @id @default(cuid())
+  automationId  String
+  automation    Automation    @relation(fields: [automationId], references: [id], onDelete: Cascade)
+  occurrenceKey String // e.g. "2026-11-23"
+  status        RunStatus
+  message       String?
+  campaignId    String?
+  campaign      Campaign?     @relation(fields: [campaignId], references: [id])
+  recipients    Int           @default(0)
+  createdAt     DateTime      @default(now())
+
+  @@unique([automationId, occurrenceKey])
+}
+
+model Suppression {
+  id        String            @id @default(cuid())
+  email     String            @unique
+  reason    SuppressionReason
+  detail    String?
+  createdAt DateTime          @default(now())
+}
+
+model MediaAsset {
+  id        String   @id @default(cuid())
+  name      String
+  url       String
+  kind      String // Logo, Banner, Project, Festive, Photo, Signature, Icon
+  createdBy String?
+  createdAt DateTime @default(now())
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  dedupeKey String?   @unique
+  userId    String?
+  user      User?     @relation(fields: [userId], references: [id])
+  roles     Role[] // broadcast to these roles when userId is null
+  level     String    @default("info") // info, warning, error, success
+  title     String
+  body      String?
+  link      String?
+  readBy    String[]  @default([])
+  createdAt DateTime  @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String
+  entity    String?
+  entityId  String?
+  detail    String?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+model Setting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+// Fixed-window counters for login rate limiting
+model RateLimit {
+  key       String   @id
+  count     Int
+  resetAt   DateTime
+}

@@ -1,0 +1,63 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  @apply bg-canvas text-ink antialiased;
+  font-feature-settings: "cv11", "ss01";
+}
+
+@layer components {
+  .input {
+    @apply w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink shadow-sm outline-none transition placeholder:text-muted/70 focus:border-brand focus:ring-2 focus:ring-brand/15 disabled:bg-canvas disabled:text-muted;
+  }
+  .label {
+    @apply mb-1 block text-xs font-semibold uppercase tracking-wide text-muted;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg px-3.5 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply btn bg-brand text-white shadow-sm hover:bg-brand-600;
+  }
+  .btn-navy {
+    @apply btn bg-navy text-white hover:bg-navy-700;
+  }
+  .btn-secondary {
+    @apply btn border border-line bg-white text-ink hover:border-navy-300 hover:bg-navy-50;
+  }
+  .btn-ghost {
+    @apply btn text-muted hover:bg-navy-50 hover:text-ink;
+  }
+  .btn-danger {
+    @apply btn border border-bad/30 bg-white text-bad hover:bg-bad/5;
+  }
+  .card {
+    @apply rounded-xl border border-line bg-white shadow-card;
+  }
+  .table {
+    @apply w-full text-left text-sm;
+  }
+  .table th {
+    @apply border-b border-line bg-canvas/60 px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-muted;
+  }
+  .table td {
+    @apply border-b border-line/70 px-4 py-3 align-middle;
+  }
+  .table tr:last-child td {
+    @apply border-b-0;
+  }
+  .link {
+    @apply font-medium text-navy underline-offset-2 hover:text-brand hover:underline;
+  }
+}
+
+@media print {
+  aside, header, .no-print { display: none !important; }
+  main { padding: 0 !important; }
+  .card { box-shadow: none !important; break-inside: avoid; }
+}
