@@ -118,15 +118,20 @@ const BANNER_BG: Record<string, [string, string]> = {
 function renderBlock(b: EmailBlock, vars: RenderVars, flags: RenderFlags, brand: Brand): string {
   const f = (t: string) => fill(t, vars, flags, true);
   switch (b.type) {
-    case "logo":
+    case "logo": {
+      // Custom logo URL from Settings wins; otherwise the bundled /icon.png (absolute APP_URL in emails, relative in the browser preview).
+      const appUrl = (process.env.APP_URL ?? "").replace(/\/$/, "");
+      const custom = brand.logoUrl && isSafeUrl(brand.logoUrl) ? brand.logoUrl : "";
+      const logo = custom || (typeof window !== "undefined" ? "/icon.png" : /^https:\/\//.test(appUrl) ? `${appUrl}/icon.png` : "");
       return `<tr><td style="padding:28px 40px 8px">${
-        brand.logoUrl && isSafeUrl(brand.logoUrl)
-          ? `<img src="${escapeHtml(brand.logoUrl)}" alt="${escapeHtml(brand.companyName)}" height="40" style="display:block;height:40px;border:0">`
+        logo
+          ? `<img src="${escapeHtml(logo)}" alt="${escapeHtml(brand.companyName)}" height="${custom ? 40 : 72}" style="display:block;height:${custom ? 40 : 72}px;border:0">`
           : `<table role="presentation" cellpadding="0" cellspacing="0"><tr>
               <td style="background:${C.brand};border-radius:8px;width:40px;height:40px;text-align:center;font:800 15px ${FONT};color:#fff;letter-spacing:.5px">AOJ</td>
               <td style="padding-left:10px;font:700 14px ${FONT};color:${C.navy};letter-spacing:1.5px">AOJ GLOBAL<br><span style="font-weight:500;font-size:10px;color:${C.muted};letter-spacing:1.2px">CONCEPT LIMITED</span></td>
             </tr></table>`
       }</td></tr>`;
+    }
     case "banner": {
       const [solid, grad] = BANNER_BG[b.tone ?? "brand"];
       const light = b.tone === "soft";

@@ -35,7 +35,8 @@ export function Shell({ nav, user, unread, logoutAction, children }: { nav: NavI
   const sidebar = (
     <nav className="flex h-full flex-col">
       <Link href="/" className="flex items-center gap-3 px-5 py-5" onClick={() => setOpen(false)}>
-        <div className="grid h-9 w-9 place-items-center rounded-lg bg-brand text-xs font-extrabold text-white">AOJ</div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/icon.png" alt="AOJ Global" className="h-10 w-10 rounded-lg bg-white object-contain p-0.5" />
         <div>
           <div className="text-[15px] font-bold leading-none text-white">AOJ Engage</div>
           <div className="mt-1 text-[10px] tracking-[0.18em] text-navy-300">AOJ GLOBAL</div>

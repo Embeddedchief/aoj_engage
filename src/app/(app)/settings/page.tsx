@@ -38,7 +38,7 @@ export default async function SettingsPage() {
             <label><span className="label">Public email</span><input className="input" name="email" defaultValue={s.brand.email} /></label>
             <label><span className="label">Phone</span><input className="input" name="phone" defaultValue={s.brand.phone} /></label>
             <label><span className="label">Address</span><input className="input" name="address" defaultValue={s.brand.address} /></label>
-            <label className="md:col-span-2"><span className="label">Official logo URL (https, PNG ~80px tall)</span><input className="input" name="logoUrl" defaultValue={s.brand.logoUrl} placeholder="Leave empty to use the AOJ text wordmark" /></label>
+            <label className="md:col-span-2"><span className="label">Official logo URL (https, PNG ~80px tall)</span><input className="input" name="logoUrl" defaultValue={s.brand.logoUrl} placeholder="Leave empty to use the bundled logo (public/icon.png)" /></label>
             {["LinkedIn", "Facebook", "Instagram", "X"].map((l) => <label key={l}><span className="label">{l}</span><input className="input" name={`social_${l}`} defaultValue={social(l)} placeholder="https://" /></label>)}
             <div className="flex justify-end md:col-span-2"><Submit>Save branding</Submit></div>
           </ActionForm>

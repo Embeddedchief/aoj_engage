@@ -7,7 +7,8 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <div className="absolute -right-24 -top-24 h-96 w-96 rounded-full bg-brand/25 blur-3xl" />
         <div className="absolute -bottom-32 left-10 h-80 w-80 rounded-full bg-brand/10 blur-3xl" />
         <div className="relative flex items-center gap-3">
-          <div className="grid h-11 w-11 place-items-center rounded-xl bg-brand text-sm font-extrabold text-white">AOJ</div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/icon.png" alt="AOJ Global" className="h-14 w-14 rounded-xl bg-white object-contain p-1" />
           <div className="text-white">
             <div className="text-lg font-bold leading-none">AOJ Engage</div>
             <div className="mt-1 text-xs tracking-widest text-navy-300">AOJ GLOBAL CONCEPT LIMITED</div>

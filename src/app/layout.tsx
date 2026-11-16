@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   title: { default: "AOJ Engage", template: "%s · AOJ Engage" },
   description: "Corporate communications & automated email management for AOJ Global Concept Limited",
   robots: { index: false, follow: false },
-  icons: { icon: "/icon.svg" },
+  icons: { icon: "/icon.png", apple: "/icon.png" },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
