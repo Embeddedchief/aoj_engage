@@ -66,7 +66,7 @@ The engine is independent of the UI and of email specifics (`renderForContact` +
 ## Deploy to Vercel
 
 1. **Push this folder to GitHub** and import the repository in Vercel.
-2. **Add a database.** In the Vercel project, open *Storage → Marketplace → Neon (Postgres)* and connect it. This sets `DATABASE_URL` and `DATABASE_URL_UNPOOLED` automatically. (Any Postgres works. Set both variables yourself, with the direct connection string in `DATABASE_URL_UNPOOLED`.)
+2. **Add a database.** In the Vercel project, add *Prisma Postgres* (or Neon) from Storage / Marketplace. It sets `DATABASE_URL` automatically. Any Postgres works; use a direct (non-pgbouncer) connection string so migrations run.
 3. **Set environment variables** (Project → Settings → Environment Variables). See `.env.example`:
    - `SESSION_SECRET`: 32+ random characters (`node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`)
    - `CRON_SECRET`: random string. Vercel Cron sends it automatically.
@@ -97,7 +97,7 @@ Optional: set `OPENAI_API_KEY` to enable the AI writing assistant in the templat
 ## Local development
 
 ```bash
-cp .env.example .env              # fill DATABASE_URL, DATABASE_URL_UNPOOLED, SESSION_SECRET, CRON_SECRET
+cp .env.example .env              # fill DATABASE_URL, SESSION_SECRET, CRON_SECRET
 npm install
 npx prisma migrate deploy
 SEED_DEMO_DATA=true npm run db:seed   # fictitious sample contacts and history
