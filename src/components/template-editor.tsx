@@ -231,7 +231,7 @@ export function TemplateEditor(props: {
             <div className="truncate"><span className="text-muted">Subject:</span> <strong>{rendered.subject}</strong></div>
           </div>
           <div className="flex justify-center bg-[#F4F2EE] p-3">
-            <iframe title="Email preview" sandbox="" srcDoc={rendered.html} className="rounded-md bg-white transition-all" style={{ width: device === "desktop" ? "100%" : 375, maxWidth: 680, height: 760, border: device === "mobile" ? "8px solid #0E2240" : "none", borderRadius: device === "mobile" ? 24 : 6 }} />
+            <iframe title="Email preview" sandbox="" srcDoc={rendered.html} className="rounded-md bg-white transition-all" style={{ width: device === "desktop" ? "100%" : 375, maxWidth: 680, height: 760, border: device === "mobile" ? "8px solid #15171E" : "none", borderRadius: device === "mobile" ? 24 : 6 }} />
           </div>
         </div>
         <div className="card flex flex-wrap items-center gap-2 p-3">

@@ -7,7 +7,12 @@ export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   if (PUBLIC.some((r) => r.test(pathname))) return NextResponse.next();
   const ok = await verifySession(req.cookies.get(SESSION_COOKIE)?.value).catch(() => null);
-  if (ok) return NextResponse.next();
+  if (ok) {
+    // Expose the path to server layouts (used to enforce the first-login password change).
+    const h = new Headers(req.headers);
+    h.set("x-pathname", pathname);
+    return NextResponse.next({ request: { headers: h } });
+  }
   if (pathname.startsWith("/api/")) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
   const url = req.nextUrl.clone();
   url.pathname = "/login";

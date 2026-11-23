@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { ArrowRight } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { ActionForm, Submit } from "@/components/forms";
@@ -11,25 +12,24 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   if (await getCurrentUser()) redirect("/");
   const { next } = await searchParams;
   return (
-    <>
-      <div className="mb-8 lg:hidden">
-        <div className="grid h-11 w-11 place-items-center rounded-xl bg-brand text-sm font-extrabold text-white">AOJ</div>
-      </div>
-      <h1 className="text-2xl font-bold text-navy">Sign in to AOJ Engage</h1>
-      <p className="mt-1 text-sm text-muted">Use the account issued by the ICT Administrator.</p>
-      <ActionForm action={login} className="mt-8 space-y-4">
+    <div className="rounded-3xl border border-line bg-white p-6 shadow-card">
+      <h2 className="text-lg font-extrabold text-navy">Sign in</h2>
+      <p className="mt-0.5 text-xs text-muted">Use the account issued by the ICT Administrator.</p>
+      <ActionForm action={login} className="mt-5 space-y-3.5">
         <input type="hidden" name="next" value={next ?? ""} />
         <label className="block">
           <span className="label">Email</span>
-          <input className="input" type="email" name="email" autoComplete="username" required autoFocus />
+          <input className="input" type="email" name="email" autoComplete="username" required autoFocus placeholder="you@aojglobal.com" />
         </label>
         <label className="block">
           <span className="label">Password</span>
-          <input className="input" type="password" name="password" autoComplete="current-password" required />
+          <input className="input" type="password" name="password" autoComplete="current-password" required placeholder="••••••••••" />
         </label>
-        <Submit className="btn-primary w-full py-2.5">Sign in</Submit>
+        <Submit className="btn-navy group w-full justify-between py-1.5 pl-5 pr-1.5">
+          Sign in <span className="grid h-8 w-8 place-items-center rounded-full bg-brand transition group-hover:translate-x-0.5"><ArrowRight className="h-4 w-4" /></span>
+        </Submit>
       </ActionForm>
-      <p className="mt-6 text-xs text-muted">Forgotten your password? Ask the ICT Administrator to reset it from User Management.</p>
-    </>
+      <p className="mt-4 text-[11px] text-muted">Forgotten your password? Ask the ICT Administrator to reset it from Users &amp; Roles.</p>
+    </div>
   );
 }

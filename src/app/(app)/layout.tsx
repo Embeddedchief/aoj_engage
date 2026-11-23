@@ -1,4 +1,6 @@
 import { Suspense } from "react";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { can } from "@/lib/permissions";
@@ -12,6 +14,8 @@ export const dynamic = "force-dynamic";
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
   const r = user.role;
+  // First sign-in with an issued password: must choose a new one before using the app.
+  if (user.mustChangePassword && (await headers()).get("x-pathname") !== "/settings/account") redirect("/settings/account?first=1");
   const [unread, pending] = await Promise.all([
     prisma.notification.count({ where: { AND: [notificationWhere(user), { NOT: { readBy: { has: user.id } } }] } }),
     can(r, "campaigns:approve") ? prisma.campaign.count({ where: { status: "AWAITING_APPROVAL" } }) : Promise.resolve(0),
@@ -41,7 +45,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const initials = user.name.split(/\s+/).map((p) => p[0]).slice(0, 2).join("").toUpperCase();
   return (
     <Suspense>
-      <Shell nav={nav.filter(Boolean) as NavItem[]} user={{ name: user.name, role: ROLE_LABEL[user.role], initials }} unread={unread} logoutAction={logout}>
+      <Shell nav={nav.filter(Boolean) as NavItem[]} user={{ name: user.name, email: user.email, role: ROLE_LABEL[user.role], initials }} canBroadcast={can(r, "campaigns:write")} unread={unread} logoutAction={logout}>
         {children}
       </Shell>
     </Suspense>

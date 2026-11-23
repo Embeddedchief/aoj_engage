@@ -84,7 +84,7 @@ export async function createUser(_: ActionResult | null, fd: FormData): Promise<
     const pw = str(fd, "password");
     const problem = passwordProblem(pw);
     if (problem) throw new Error(problem);
-    const created = await prisma.user.create({ data: { email, name: str(fd, "name"), role, department: str(fd, "department") || null, position: str(fd, "position") || null, passwordHash: await hashPassword(pw) } });
+    const created = await prisma.user.create({ data: { email, name: str(fd, "name"), role, department: str(fd, "department") || null, position: str(fd, "position") || null, passwordHash: await hashPassword(pw), mustChangePassword: true } });
     await audit(u.id, "user.created", "User", created.id, `${email} as ${role}`, await clientIp());
     return { ok: true, message: `Account created for ${email}. Share the temporary password securely.` };
   });
@@ -109,7 +109,7 @@ export async function updateUser(_: ActionResult | null, fd: FormData): Promise<
       where: { id },
       data: {
         role: ROLES.includes(role) ? role : target.role, active,
-        ...(pw ? { passwordHash: await hashPassword(pw), failedLogins: 0, lockedUntil: null } : {}),
+        ...(pw ? { passwordHash: await hashPassword(pw), failedLogins: 0, lockedUntil: null, mustChangePassword: true } : {}),
         // Invalidate sessions on any security-relevant change.
         ...(pw || !active || roleChanged ? { sessionEpoch: { increment: 1 } } : {}),
       },
@@ -127,7 +127,8 @@ export async function changeOwnPassword(_: ActionResult | null, fd: FormData): P
     const pw = str(fd, "password");
     const problem = passwordProblem(pw);
     if (problem) throw new Error(problem);
-    await prisma.user.update({ where: { id: u.id }, data: { passwordHash: await hashPassword(pw), sessionEpoch: { increment: 1 } } });
+    if (await verifyPassword(u.passwordHash, pw)) throw new Error("Choose a password different from the current one.");
+    await prisma.user.update({ where: { id: u.id }, data: { passwordHash: await hashPassword(pw), mustChangePassword: false, sessionEpoch: { increment: 1 } } });
     await audit(u.id, "user.password_changed", "User", u.id);
     return { ok: true, redirectTo: "/login" };
   });

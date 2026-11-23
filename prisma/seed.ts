@@ -4,6 +4,7 @@
  * Set SEED_DEMO_DATA=true to add fictitious sample contacts and history (never in production).
  */
 import { PrismaClient, type ContactCategory } from "@prisma/client";
+import { hash } from "@node-rs/argon2";
 import { AUTOMATION_CATALOG, EVENT_CATALOG, SEGMENT_CATALOG, TEMPLATE_CATALOG } from "../src/lib/catalog";
 import { DEFAULT_SETTINGS } from "../src/lib/settings";
 
@@ -19,6 +20,25 @@ const prisma = new PrismaClient();
 async function main() {
   // Settings
   await prisma.setting.upsert({ where: { key: "app" }, create: { key: "app", value: DEFAULT_SETTINGS as object }, update: {} });
+
+  // Root administrator: created once, never overwritten. The seeded password must be changed at first sign-in.
+  // Override with ROOT_ADMIN_NAME / ROOT_ADMIN_EMAIL / ROOT_ADMIN_PASSWORD in the environment if needed.
+  const rootEmail = (process.env.ROOT_ADMIN_EMAIL || "samuelab.aoj@gmail.com").trim().toLowerCase();
+  if (!(await prisma.user.findUnique({ where: { email: rootEmail } }))) {
+    const root = await prisma.user.create({
+      data: {
+        name: process.env.ROOT_ADMIN_NAME || "Admin",
+        email: rootEmail,
+        role: "SUPER_ADMIN",
+        department: "ICT",
+        position: "Root Administrator",
+        passwordHash: await hash(process.env.ROOT_ADMIN_PASSWORD || "admin123$$", { algorithm: 2, memoryCost: 19456, timeCost: 2, parallelism: 1 }),
+        mustChangePassword: true,
+      },
+    });
+    await prisma.auditLog.create({ data: { userId: root.id, action: "auth.setup", entity: "User", entityId: root.id, detail: "Root administrator created by deployment seed" } });
+    console.log(`Root administrator created: ${rootEmail}`);
+  }
 
   // Templates
   for (const t of TEMPLATE_CATALOG) {

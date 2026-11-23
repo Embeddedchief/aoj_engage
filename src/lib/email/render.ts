@@ -94,7 +94,7 @@ export function findInvalidLinks(blocks: EmailBlock[], vars: RenderVars, flags: 
   return bad;
 }
 
-const C = { brand: "#E4572E", navy: "#0E2240", ink: "#1B2433", muted: "#5F6B7D", line: "#E6E3DD", canvas: "#F4F2EE" };
+const C = { brand: "#E5120E", navy: "#15171E", ink: "#1B2433", muted: "#5F6B7D", line: "#E6E3DD", canvas: "#F4F2EE" };
 const FONT = "Inter,'Segoe UI',Helvetica,Arial,sans-serif";
 
 /** Paragraph text → HTML: blank line = new paragraph, single newline = <br>, **bold**. */
@@ -109,10 +109,10 @@ function richText(text: string, vars: RenderVars, flags: RenderFlags, style: str
 }
 
 const BANNER_BG: Record<string, [string, string]> = {
-  brand: ["#E4572E", "linear-gradient(135deg,#E4572E 0%,#C9441E 55%,#0E2240 140%)"],
-  navy: ["#0E2240", "linear-gradient(135deg,#0E2240 0%,#16305A 70%,#E4572E 160%)"],
+  brand: ["#E5120E", "linear-gradient(135deg,#E5120E 0%,#C40D0A 55%,#15171E 140%)"],
+  navy: ["#15171E", "linear-gradient(135deg,#15171E 0%,#262833 70%,#E5120E 160%)"],
   festive: ["#7A1F1F", "linear-gradient(135deg,#7A1F1F 0%,#B4362A 50%,#C99A2E 130%)"],
-  soft: ["#FDF1EC", "linear-gradient(135deg,#FDF1EC 0%,#FBE0D5 100%)"],
+  soft: ["#FFF2F1", "linear-gradient(135deg,#FFF2F1 0%,#FFE0DD 100%)"],
 };
 
 function renderBlock(b: EmailBlock, vars: RenderVars, flags: RenderFlags, brand: Brand): string {

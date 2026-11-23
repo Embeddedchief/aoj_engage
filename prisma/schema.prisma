@@ -150,6 +150,7 @@ model User {
   lockedUntil  DateTime?
   lastLoginAt  DateTime?
   sessionEpoch Int       @default(0) // bump to invalidate all sessions
+  mustChangePassword Boolean @default(false) // issued/seeded passwords must be replaced at first sign-in
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
