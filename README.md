@@ -82,7 +82,15 @@ Vercel **Hobby** allows one daily cron, configured for **07:00 UTC = 08:00 Lagos
 - upgrade to Vercel Pro and change `vercel.json` to `"*/15 * * * *"`, or
 - point any external scheduler (e.g. cron-job.org, GitHub Actions) at `GET /api/cron/tick` with header `Authorization: Bearer $CRON_SECRET` every 15 minutes.
 
-### Going live with Amazon SES
+### Going live with Brevo (recommended, free)
+
+1. Create a free account at brevo.com. The free plan sends 300 emails a day; paid plans lift the limit.
+2. **Senders, Domains & Dedicated IPs → Domains:** add `aojglobal.com` and publish the DKIM, Brevo-code and DMARC DNS records it shows. Add the sender addresses (communications@, hr@, customers@, notifications@).
+3. **SMTP & API → API keys:** create a key and set `BREVO_API_KEY` in Vercel, then redeploy.
+4. Optional: **Transactional → Settings → Webhook** → `https://<APP_URL>/api/webhooks/brevo?token=<BREVO_WEBHOOK_SECRET>` for hard bounces, spam, blocked and invalid emails.
+5. Keep the daily maximum in *Settings → Policies* at or below the plan limit (default 300).
+
+### Alternative: Amazon SES
 
 1. Verify `aojglobal.com` in SES (eu-west-1 or your region). Publish the DKIM CNAMEs, set a custom MAIL FROM domain (SPF), and publish DMARC.
 2. Request SES **production access** (out of the sandbox).
@@ -100,7 +108,7 @@ Optional: set `OPENAI_API_KEY` to enable the AI writing assistant in the templat
 cp .env.example .env              # fill DATABASE_URL, SESSION_SECRET, CRON_SECRET
 npm install
 npx prisma migrate deploy
-SEED_DEMO_DATA=true npm run db:seed   # fictitious sample contacts and history
+npm run db:seed                   # templates, calendar, automations, root admin
 npm run dev
 ```
 

@@ -6,7 +6,7 @@ const sans = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-sans", di
 
 export const metadata: Metadata = {
   title: { default: "AOJ Engage", template: "%s · AOJ Engage" },
-  description: "The messaging and broadcast centre of AOJ Global Concept Limited",
+  description: "Customer communication management and broadcast centre of AOJ Global Concept Limited",
   robots: { index: false, follow: false },
   icons: { icon: "/icon.png", apple: "/icon.png" },
 };

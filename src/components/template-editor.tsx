@@ -4,7 +4,7 @@ import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { Audience } from "@prisma/client";
 import { ArrowDown, ArrowUp, Copy, GripVertical, Loader2, Monitor, Plus, Send, Smartphone, Sparkles, Trash2, TriangleAlert } from "lucide-react";
-import { BLOCK_LABELS, bid, newBlock, type BlockType, type EmailBlock } from "@/lib/blocks";
+import { BLOCK_LABELS, EMAIL_ART, bid, newBlock, type BlockType, type EmailBlock } from "@/lib/blocks";
 import { analysePlaceholders, blockTexts, contactFlags, contactVars, findInvalidLinks, PLACEHOLDERS, CONDITION_FLAGS, renderEmail, type Brand } from "@/lib/email/render";
 import { aiDraft, restoreVersion, saveTemplateVersion, sendTest } from "@/actions/templates";
 import { ActionButton } from "./forms";
@@ -13,8 +13,8 @@ import { cn } from "@/lib/utils";
 type PreviewContact = { id: string; firstName: string; lastName: string; preferredName: string | null; organisation: string | null; department: string | null; jobTitle: string | null; category: string };
 type Version = { version: number; note: string | null; createdBy: string | null; createdAt: string; subject: string };
 
-const SAMPLE_STAFF: PreviewContact = { id: "", firstName: "John", lastName: "Ade", preferredName: null, organisation: "AOJ Global Concept Limited", department: "Engineering", jobTitle: "Mechanical Engineer", category: "STAFF" };
-const SAMPLE_CUSTOMER: PreviewContact = { id: "", firstName: "Kelechi", lastName: "Nwosu", preferredName: null, organisation: "ABC Ltd", department: null, jobTitle: "Facilities Manager", category: "CUSTOMER" };
+const SAMPLE_STAFF: PreviewContact = { id: "", firstName: "Augustine", lastName: "Okoro", preferredName: null, organisation: "AOJ Global Concept Limited", department: "Engineering", jobTitle: "Mechanical Engineer", category: "STAFF" };
+const SAMPLE_CUSTOMER: PreviewContact = { id: "", firstName: "Chinedu", lastName: "Eze", preferredName: null, organisation: "Your client company", department: null, jobTitle: "Facilities Manager", category: "CUSTOMER" };
 
 export function TemplateEditor(props: {
   template: { id: string; name: string; category: string; audience: Audience; active: boolean; currentVersion: number };
@@ -211,7 +211,7 @@ export function TemplateEditor(props: {
             <button type="button" onClick={() => setDevice("mobile")} className={cn("rounded-md px-2.5 py-1 text-xs", device === "mobile" ? "bg-navy text-white" : "text-muted")}><Smartphone className="inline h-3.5 w-3.5" /> Mobile</button>
           </div>
           <select className="input w-auto flex-1 py-1.5 text-xs" value={contactId} onChange={(e) => setContactId(e.target.value)} aria-label="Preview as">
-            <option value="">Preview as sample {sampleKind === "staff" ? "staff (John Ade)" : "customer (Kelechi Nwosu)"}</option>
+            <option value="">Preview as sample {sampleKind === "staff" ? "staff (Augustine Okoro)" : "customer (Chinedu Eze)"}</option>
             {props.contacts.map((c) => <option key={c.id} value={c.id}>{c.firstName} {c.lastName} — {c.category.toLowerCase().replace("_", " ")}</option>)}
           </select>
           {!contactId && template.audience === "BOTH" && <button type="button" className="btn-ghost px-2 py-1 text-xs" onClick={() => setSampleKind((k) => (k === "staff" ? "customer" : "staff"))}>Switch to {sampleKind === "staff" ? "customer" : "staff"}</button>}
@@ -273,7 +273,8 @@ function BlockFields({ b, update, track, disabled, media }: { b: EmailBlock; upd
       <div className="space-y-2">
         {text("title", b.title, "Banner title")}
         {text("subtitle", b.subtitle, "Subtitle")}
-        <label className="block"><span className="label">Style</span><select className="input" value={b.tone ?? "brand"} disabled={disabled} onChange={(e) => update(b.id, { tone: e.target.value } as Partial<EmailBlock>)}><option value="brand">AOJ orange</option><option value="navy">Deep navy</option><option value="festive">Festive red & gold</option><option value="soft">Soft</option></select></label>
+        <label className="block"><span className="label">Artwork</span><select className="input" value={b.art ?? ""} disabled={disabled} onChange={(e) => update(b.id, { art: e.target.value || undefined } as Partial<EmailBlock>)}><option value="">None – coloured band</option>{EMAIL_ART.map((a) => <option key={a.key} value={a.key}>{a.label}</option>)}</select></label>
+        {!b.art && <label className="block"><span className="label">Band colour</span><select className="input" value={b.tone ?? "brand"} disabled={disabled} onChange={(e) => update(b.id, { tone: e.target.value } as Partial<EmailBlock>)}><option value="brand">AOJ red</option><option value="navy">Charcoal</option><option value="festive">Festive red & gold</option><option value="soft">Soft</option></select></label>}
         {text("imageUrl", b.imageUrl, "Banner image URL (optional)")}
         {mediaPicker("imageUrl")}
       </div>

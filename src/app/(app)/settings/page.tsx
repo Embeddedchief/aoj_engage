@@ -1,7 +1,7 @@
 import { CheckCircle2, CircleDashed } from "lucide-react";
 import { requirePermission } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
-import { providerMode } from "@/lib/email/provider";
+import { PROVIDER_LABEL, providerMode } from "@/lib/email/provider";
 import { Badge, Card, Notice, PageHeader } from "@/components/ui";
 import { ActionForm, Submit } from "@/components/forms";
 import { saveBranding, saveSenders } from "@/actions/admin";
@@ -19,9 +19,9 @@ export default async function SettingsPage() {
     ["SESSION_SECRET", (process.env.SESSION_SECRET ?? "").length >= 32, "Session signing key (32+ chars)"],
     ["CRON_SECRET", env("CRON_SECRET"), "Protects the scheduled engine endpoint"],
     ["APP_URL", env("APP_URL"), "Used in unsubscribe links"],
-    ["AWS_ACCESS_KEY_ID / SECRET / REGION", mode === "ses", "Amazon SES credentials (IAM user limited to ses:SendEmail)"],
-    ["AWS_SES_CONFIGURATION_SET", env("AWS_SES_CONFIGURATION_SET"), "Publishes delivery/bounce/complaint events"],
-    ["SES_SNS_TOPIC_ARNS", env("SES_SNS_TOPIC_ARNS"), "Allowed SNS topics for /api/webhooks/ses"],
+    ["BREVO_API_KEY", mode === "brevo", "Brevo transactional email (free plan: 300 emails/day)"],
+    ["BREVO_SENDER_EMAIL", env("BREVO_SENDER_EMAIL"), "Optional: one verified Brevo sender used for every email (replies still go to the department address)"],
+    ["BREVO_WEBHOOK_SECRET", env("BREVO_WEBHOOK_SECRET"), "Optional: secures /api/webhooks/brevo for bounce & spam reports"],
     ["OPENAI_API_KEY", env("OPENAI_API_KEY"), "Optional: AI writing assistant"],
   ];
   const social = (l: string) => s.brand.socials.find((x) => x.label === l)?.url ?? "";
@@ -45,14 +45,14 @@ export default async function SettingsPage() {
         </Card>
 
         <div className="space-y-6">
-          <Card title="Email delivery" actions={<Badge tone={mode === "ses" ? "ok" : "warn"}>{mode === "ses" ? "Amazon SES connected" : "Simulation mode"}</Badge>}>
-            {mode === "simulation" && <div className="mb-4"><Notice tone="warn">No email is sent. Deliveries are recorded as accepted (addresses containing “bounce” simulate a hard bounce). Add the AWS variables to go live.</Notice></div>}
+          <Card title="Email delivery" actions={<Badge tone={mode !== "simulation" ? "ok" : "warn"}>{mode !== "simulation" ? `${PROVIDER_LABEL[mode]} connected` : "Simulation mode"}</Badge>}>
+            {mode === "simulation" && <div className="mb-4"><Notice tone="warn">No email is sent. Deliveries are recorded as accepted (addresses containing “bounce” simulate a hard bounce). Add BREVO_API_KEY in Vercel to go live.</Notice></div>}
             <ul className="space-y-2 text-sm">
               {checks.map(([k, ok, d]) => <li key={k} className="flex items-start gap-2">{ok ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-ok" /> : <CircleDashed className="mt-0.5 h-4 w-4 shrink-0 text-muted" />}<span><code className="text-xs">{k}</code><span className="block text-xs text-muted">{d}</span></span></li>)}
             </ul>
             <div className="mt-4 rounded-lg bg-canvas p-3 text-xs text-muted">
-              <div className="mb-1 font-semibold text-navy">Domain authentication checklist (aojglobal.com)</div>
-              Verify the domain in SES · publish the 3 DKIM CNAMEs · SPF: include amazonses.com via a custom MAIL FROM subdomain (e.g. mail.aojglobal.com) · DMARC: <code>v=DMARC1; p=quarantine; rua=mailto:dmarc@aojglobal.com</code> · request SES production access · create a configuration set with an SNS event destination → <code>{process.env.APP_URL ?? "https://your-app"}/api/webhooks/ses</code>
+              <div className="mb-1 font-semibold text-navy">Going live with Brevo (aojglobal.com)</div>
+              Create a free Brevo account · Senders, Domains &amp; Dedicated IPs → add <code>aojglobal.com</code> and publish the DKIM, Brevo-code and DMARC records it shows · SMTP &amp; API → create an API key → Vercel: <code>BREVO_API_KEY</code> · optional webhook (hard bounce, spam, blocked, invalid) → <code>{process.env.APP_URL ?? "https://your-app"}/api/webhooks/brevo?token=BREVO_WEBHOOK_SECRET</code>
             </div>
           </Card>
 

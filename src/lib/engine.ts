@@ -371,3 +371,18 @@ export async function runTick(now = new Date(), actor: string | null = null) {
   if (actor) await audit(actor, "engine.run", "Engine", undefined, `${planned.length} planned, ${dispatched.length} dispatch steps`);
   return summary;
 }
+
+/** "Send now": keep dispatching batches until the campaign has nothing left that is due,
+ *  the daily limit stops progress, or the time budget (function limit) runs out. */
+export async function drainCampaign(campaignId: string, budgetMs = 50_000) {
+  const end = Date.now() + budgetMs;
+  const due = () => prisma.campaignRecipient.count({ where: { campaignId, status: "QUEUED", OR: [{ nextAttemptAt: null }, { nextAttemptAt: { lte: new Date() } }] } });
+  let left = await due();
+  while (left > 0 && Date.now() < end) {
+    await dispatchDue();
+    const now = await due();
+    if (now >= left) break; // no progress (daily limit, suspension or approval) – the scheduled engine continues later
+    left = now;
+  }
+  return left;
+}

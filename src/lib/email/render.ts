@@ -50,7 +50,7 @@ export function fill(text: string, vars: RenderVars, flags: RenderFlags, escape:
   const t = applyConditionals(text, flags);
   return t.replace(VAR_RE, (m, key: string) => {
     const v = vars[key];
-    if (v === undefined || v === null || v === "") return escape ? `<span style="background:#FDECEC;color:#B4362A">[${key}]</span>` : `[${key}]`;
+    if (v === undefined || v === null || v === "") return escape ? `<span style="background:#FFF2F1;color:#C2261D">[${key}]</span>` : `[${key}]`;
     return escape ? escapeHtml(String(v)) : String(v);
   });
 }
@@ -94,8 +94,23 @@ export function findInvalidLinks(blocks: EmailBlock[], vars: RenderVars, flags: 
   return bad;
 }
 
-const C = { brand: "#E5120E", navy: "#15171E", ink: "#1B2433", muted: "#5F6B7D", line: "#E6E3DD", canvas: "#F4F2EE" };
-const FONT = "Inter,'Segoe UI',Helvetica,Arial,sans-serif";
+const C = { brand: "#E5120E", navy: "#15171E", ink: "#2A2C35", muted: "#6B6D78", line: "#ECEBE7", canvas: "#F3F2EF", soft: "#FFF2F1" };
+const FONT = "'Segoe UI',Helvetica,Arial,sans-serif";
+
+/** Absolute URL for files in /public. Emails need the public APP_URL; the in-app preview uses relative paths. */
+export function assetUrl(path: string) {
+  if (typeof window !== "undefined") return path;
+  return `${(process.env.APP_URL ?? "").replace(/\/$/, "")}${path}`;
+}
+
+/** Registrations & certifications shown in every email (images in public/email/badges). */
+const CREDENTIALS = [
+  { file: "coren.jpg", alt: "COREN registered (Council for the Regulation of Engineering in Nigeria)", h: 30 },
+  { file: "iso.jpg", alt: "ISO 9001:2015 certified (quality management)", h: 56 },
+  { file: "iso-45001.png", alt: "ISO 45001:2018 certified (occupational health & safety)", h: 56 },
+  { file: "nemsa.png", alt: "NEMSA – Nigerian Electricity Management Services Agency", h: 56 },
+  { file: "nuprc.png", alt: "NUPRC – Nigerian Upstream Petroleum Regulatory Commission", h: 56 },
+];
 
 /** Paragraph text → HTML: blank line = new paragraph, single newline = <br>, **bold**. */
 function richText(text: string, vars: RenderVars, flags: RenderFlags, style: string) {
@@ -104,7 +119,7 @@ function richText(text: string, vars: RenderVars, flags: RenderFlags, style: str
     .split(/\n{2,}/)
     .map((p) => p.trim())
     .filter(Boolean)
-    .map((p) => `<p style="margin:0 0 16px;${style}">${p.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\n/g, "<br>")}</p>`)
+    .map((p) => `<p style="margin:0 0 16px;${style}">${p.replace(/\*\*(.+?)\*\*/g, `<strong style="color:${C.navy}">$1</strong>`).replace(/\n/g, "<br>")}</p>`)
     .join("");
 }
 
@@ -119,65 +134,66 @@ function renderBlock(b: EmailBlock, vars: RenderVars, flags: RenderFlags, brand:
   const f = (t: string) => fill(t, vars, flags, true);
   switch (b.type) {
     case "logo": {
-      // Custom logo URL from Settings wins; otherwise the bundled /icon.png (absolute APP_URL in emails, relative in the browser preview).
-      const appUrl = (process.env.APP_URL ?? "").replace(/\/$/, "");
-      const custom = brand.logoUrl && isSafeUrl(brand.logoUrl) ? brand.logoUrl : "";
-      const logo = custom || (typeof window !== "undefined" ? "/icon.png" : /^https:\/\//.test(appUrl) ? `${appUrl}/icon.png` : "");
-      return `<tr><td style="padding:28px 40px 8px">${
-        logo
-          ? `<img src="${escapeHtml(logo)}" alt="${escapeHtml(brand.companyName)}" height="${custom ? 40 : 72}" style="display:block;height:${custom ? 40 : 72}px;border:0">`
-          : `<table role="presentation" cellpadding="0" cellspacing="0"><tr>
-              <td style="background:${C.brand};border-radius:8px;width:40px;height:40px;text-align:center;font:800 15px ${FONT};color:#fff;letter-spacing:.5px">AOJ</td>
-              <td style="padding-left:10px;font:700 14px ${FONT};color:${C.navy};letter-spacing:1.5px">AOJ GLOBAL<br><span style="font-weight:500;font-size:10px;color:${C.muted};letter-spacing:1.2px">CONCEPT LIMITED</span></td>
-            </tr></table>`
-      }</td></tr>`;
+      const logo = brand.logoUrl && isSafeUrl(brand.logoUrl) ? brand.logoUrl : assetUrl("/icon.png");
+      return `<tr><td style="padding:26px 44px 18px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+        <td><img src="${escapeHtml(logo)}" alt="${escapeHtml(brand.companyName)}" width="76" height="76" style="display:block;width:76px;height:76px;border:0"></td>
+        <td align="right" style="font:600 11px/1.5 ${FONT};color:${C.muted};letter-spacing:.6px;text-transform:uppercase">Mechanical<span style="color:${C.brand}"> · </span>Electrical<span style="color:${C.brand}"> · </span>Plumbing</td>
+      </tr></table></td></tr>`;
     }
     case "banner": {
+      const art = b.art && /^[a-z0-9-]+$/.test(b.art) ? assetUrl(`/email/art/${b.art}.jpg`) : "";
+      const customUrl = b.imageUrl ? fill(b.imageUrl, vars, flags, false) : "";
+      const img = customUrl && isSafeUrl(customUrl) ? customUrl : art;
+      if (img) {
+        return `<tr><td style="padding:0 20px"><img src="${escapeHtml(img)}" alt="" width="560" style="display:block;width:100%;max-width:560px;height:auto;border-radius:18px;border:0"></td></tr>
+        ${b.title ? `<tr><td style="padding:30px 44px 0;font:800 30px/1.2 ${FONT};color:${C.navy};letter-spacing:-.3px">${f(b.title)}</td></tr>` : ""}
+        ${b.subtitle ? `<tr><td style="padding:8px 44px 0;font:700 12px/1.5 ${FONT};color:${C.brand};letter-spacing:1px;text-transform:uppercase">${f(b.subtitle)}</td></tr>` : ""}
+        <tr><td style="padding:20px 44px 0"><div style="width:44px;height:4px;border-radius:4px;background:${C.brand};font-size:0;line-height:0">&nbsp;</div></td></tr>`;
+      }
       const [solid, grad] = BANNER_BG[b.tone ?? "brand"];
       const light = b.tone === "soft";
-      const img = b.imageUrl && isSafeUrl(fill(b.imageUrl, vars, flags, false))
-        ? `<img src="${escapeHtml(fill(b.imageUrl, vars, flags, false))}" alt="" width="520" style="display:block;width:100%;max-width:520px;border-radius:12px 12px 0 0;border:0">`
-        : "";
-      const text = b.title || b.subtitle
-        ? `<div style="padding:28px 28px 26px;background:${solid};background-image:${grad};border-radius:${img ? "0 0 12px 12px" : "12px"}">
-            ${b.title ? `<div style="font:700 26px/1.25 ${FONT};color:${light ? C.navy : "#fff"}">${f(b.title)}</div>` : ""}
-            ${b.subtitle ? `<div style="margin-top:8px;font:400 15px/1.5 ${FONT};color:${light ? C.muted : "rgba(255,255,255,.88)"}">${f(b.subtitle)}</div>` : ""}
-          </div>`
-        : "";
-      return `<tr><td style="padding:16px 40px 8px">${img}${text}</td></tr>`;
+      return `<tr><td style="padding:0 20px"><div style="padding:36px 26px;background:${solid};background-image:${grad};border-radius:18px">
+            ${b.title ? `<div style="font:800 28px/1.2 ${FONT};color:${light ? C.navy : "#fff"}">${f(b.title)}</div>` : ""}
+            ${b.subtitle ? `<div style="margin-top:8px;font:500 15px/1.5 ${FONT};color:${light ? C.muted : "rgba(255,255,255,.88)"}">${f(b.subtitle)}</div>` : ""}
+          </div></td></tr>`;
     }
     case "heading":
-      return `<tr><td style="padding:24px 40px 4px;font:700 22px/1.3 ${FONT};color:${C.navy}">${f(b.text)}</td></tr>`;
+      return `<tr><td style="padding:26px 44px 2px;font:700 18px/1.4 ${FONT};color:${C.navy}">${f(b.text)}</td></tr>`;
     case "paragraph":
-      return `<tr><td style="padding:12px 40px 0">${richText(b.text, vars, flags, `font:400 15px/1.65 ${FONT};color:${C.ink}`)}</td></tr>`;
+      return `<tr><td style="padding:14px 44px 0">${richText(b.text, vars, flags, `font:400 16px/1.7 ${FONT};color:${C.ink}`)}</td></tr>`;
     case "image": {
       const u = fill(b.url, vars, flags, false);
       if (!isSafeUrl(u)) return "";
-      return `<tr><td style="padding:12px 40px"><img src="${escapeHtml(u)}" alt="${escapeHtml(b.alt ?? "")}" width="520" style="display:block;width:100%;max-width:520px;border-radius:10px;border:0"></td></tr>`;
+      return `<tr><td style="padding:12px 44px"><img src="${escapeHtml(u)}" alt="${escapeHtml(b.alt ?? "")}" width="512" style="display:block;width:100%;max-width:512px;border-radius:14px;border:0"></td></tr>`;
     }
     case "button": {
       const u = fill(b.url, vars, flags, false);
       if (!isSafeUrl(u)) return "";
-      return `<tr><td style="padding:12px 40px 20px"><a href="${escapeHtml(u)}" style="display:inline-block;background:${C.brand};color:#fff;text-decoration:none;font:600 14px ${FONT};padding:13px 26px;border-radius:8px">${f(b.label)}</a></td></tr>`;
+      return `<tr><td style="padding:10px 44px 22px"><a href="${escapeHtml(u)}" style="display:inline-block;background:${C.brand};color:#fff;text-decoration:none;font:700 15px ${FONT};padding:15px 30px;border-radius:999px">${f(b.label)} &rarr;</a>
+        <div style="margin-top:12px;font:400 12px/1.5 ${FONT};color:${C.muted}">If the button doesn&#39;t work, copy this link into your browser:<br><a href="${escapeHtml(u)}" style="color:${C.muted}">${escapeHtml(u)}</a></div></td></tr>`;
     }
     case "divider":
-      return `<tr><td style="padding:16px 40px"><div style="border-top:1px solid ${C.line};height:1px;line-height:1px">&nbsp;</div></td></tr>`;
+      return `<tr><td style="padding:18px 44px"><div style="border-top:1px solid ${C.line};height:1px;line-height:1px">&nbsp;</div></td></tr>`;
     case "signature":
-      return `<tr><td style="padding:8px 40px 24px">${richText(b.text, vars, flags, `font:400 15px/1.6 ${FONT};color:${C.ink}`).replace(/<p style="margin:0 0 16px;/g, '<p style="margin:0;')}</td></tr>`;
-    case "contact":
-      return `<tr><td style="padding:0 40px 24px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${C.canvas};border-radius:10px"><tr><td style="padding:16px 20px;font:400 13px/1.7 ${FONT};color:${C.muted}">
-        <strong style="color:${C.navy}">${escapeHtml(brand.companyName)}</strong><br>
-        ${brand.address ? escapeHtml(brand.address) + "<br>" : ""}
-        ${brand.phone ? escapeHtml(brand.phone) + " &nbsp;·&nbsp; " : ""}<a href="mailto:${escapeHtml(brand.email)}" style="color:${C.brand};text-decoration:none">${escapeHtml(brand.email)}</a> &nbsp;·&nbsp; <a href="${escapeHtml(brand.website)}" style="color:${C.brand};text-decoration:none">${escapeHtml(brand.website.replace(/^https?:\/\//, ""))}</a>
-      </td></tr></table></td></tr>`;
+      return `<tr><td style="padding:10px 44px 26px"><table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="border-left:4px solid ${C.brand};padding-left:16px">${richText(b.text, vars, flags, `font:400 15px/1.6 ${FONT};color:${C.ink}`).replace(/<p style="margin:0 0 16px;/g, '<p style="margin:0;')}</td></tr></table></td></tr>`;
+    case "contact": {
+      const site = brand.website.replace(/^https?:\/\//, "");
+      return `<tr><td style="padding:0 20px 20px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;border:1px solid ${C.line};border-radius:18px"><tr><td style="padding:20px 24px 8px;font:700 10px/1.4 ${FONT};color:${C.muted};letter-spacing:1.4px;text-transform:uppercase">Registered &amp; certified</td></tr>
+        <tr><td style="padding:4px 18px 14px;line-height:0">${CREDENTIALS.map((c) => `<img src="${escapeHtml(assetUrl(`/email/badges/${c.file}`))}" alt="${escapeHtml(c.alt)}" title="${escapeHtml(c.alt)}" height="${c.h}" style="display:inline-block;vertical-align:middle;height:${c.h}px;width:auto;border:0;margin:0 12px 8px 6px">`).join("")}</td></tr>
+        <tr><td style="padding:0 24px 20px;font:400 13px/1.7 ${FONT};color:${C.muted}">
+          <strong style="color:${C.navy}">${escapeHtml(brand.companyName)}</strong> · RC 720608<br>
+          ${brand.address ? escapeHtml(brand.address) + "<br>" : ""}
+          ${brand.phone ? escapeHtml(brand.phone) + " &nbsp;·&nbsp; " : ""}<a href="mailto:${escapeHtml(brand.email)}" style="color:${C.brand};text-decoration:none">${escapeHtml(brand.email)}</a> &nbsp;·&nbsp; <a href="${escapeHtml(brand.website)}" style="color:${C.brand};text-decoration:none;font-weight:700">${escapeHtml(site)}</a>
+        </td></tr></table></td></tr>`;
+    }
     case "social":
       if (!brand.socials.length) return "";
-      return `<tr><td style="padding:0 40px 20px;font:600 12px ${FONT}">${brand.socials
+      return `<tr><td style="padding:0 44px 20px;font:600 12px ${FONT}">${brand.socials
         .filter((s) => isSafeUrl(s.url))
         .map((s) => `<a href="${escapeHtml(s.url)}" style="color:${C.navy};text-decoration:none;margin-right:16px">${escapeHtml(s.label)}</a>`)
         .join("")}</td></tr>`;
     case "footer":
-      return b.text ? `<tr><td style="padding:0 40px 20px;font:400 12px/1.6 ${FONT};color:${C.muted}">${f(b.text)}</td></tr>` : "";
+      return b.text ? `<tr><td style="padding:0 44px 20px;font:400 12px/1.6 ${FONT};color:${C.muted}">${f(b.text)}</td></tr>` : "";
   }
 }
 
@@ -198,20 +214,22 @@ export function renderEmail(o: RenderOptions) {
   const pre = o.preheader ? fill(o.preheader, o.vars, o.flags, true) : "";
   const body = o.blocks.map((b) => renderBlock(b, o.vars, o.flags, o.brand)).join("\n");
   const testBar = o.isTest
-    ? `<tr><td style="background:#FFF4D6;color:#7A5300;font:700 12px ${FONT};text-align:center;padding:10px;letter-spacing:.5px">TEST EMAIL — NOT A LIVE CAMPAIGN DELIVERY</td></tr>`
+    ? `<tr><td style="background:#FFF4D6;color:#7A5300;font:700 12px ${FONT};text-align:center;padding:10px;letter-spacing:.5px">TEST EMAIL · NOT A LIVE DELIVERY</td></tr>`
     : "";
-  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>${escapeHtml(subject)}</title>
+  const site = o.brand.website.replace(/^https?:\/\//, "");
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light"><title>${escapeHtml(subject)}</title>
 <style>@media (max-width:620px){.card{border-radius:0!important}.card td{padding-left:22px!important;padding-right:22px!important}}</style></head>
 <body style="margin:0;padding:0;background:${C.canvas}">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0">${pre}</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${C.canvas}"><tr><td align="center" style="padding:28px 12px">
-<table role="presentation" class="card" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid ${C.line}">
-<tr><td style="height:5px;background:${C.brand};background-image:linear-gradient(90deg,${C.brand},${C.navy});font-size:0;line-height:0">&nbsp;</td></tr>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${C.canvas}"><tr><td align="center" style="padding:32px 12px">
+<table role="presentation" class="card" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:#ffffff;border-radius:26px;overflow:hidden;border:1px solid ${C.line}">
 ${testBar}
 ${body}
+<tr><td style="height:6px;background:${C.brand};font-size:0;line-height:0">&nbsp;</td></tr>
 </table>
-<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px"><tr><td style="padding:20px 24px;text-align:center;font:400 12px/1.6 ${FONT};color:${C.muted}">
-${escapeHtml(o.brand.companyName)} · Mechanical, Electrical &amp; Piping Engineering<br>
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px"><tr><td style="padding:22px 24px;text-align:center;font:400 12px/1.7 ${FONT};color:${C.muted}">
+<strong style="color:${C.navy}">${escapeHtml(o.brand.companyName)}</strong> · Mechanical, Electrical &amp; Plumbing Engineering<br>
+${o.brand.address ? escapeHtml(o.brand.address) + " · " : ""}<a href="${escapeHtml(o.brand.website)}" style="color:${C.brand};text-decoration:none">${escapeHtml(site)}</a><br>
 ${o.footerNote ? escapeHtml(o.footerNote) + "<br>" : ""}
 ${o.unsubscribeUrl ? `<a href="${escapeHtml(o.unsubscribeUrl)}" style="color:${C.muted}">Manage communication preferences / unsubscribe</a>` : ""}
 </td></tr></table>

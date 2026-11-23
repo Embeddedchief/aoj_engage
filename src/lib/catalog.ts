@@ -42,7 +42,7 @@ export const TEMPLATE_CATALOG: CatalogTemplate[] = [
     blocks: tpl({ title: "Wishing you a productive week", tone: "navy", heading: "Dear {{first_name}},", sign: SIGN_CO, body: [
       "A new week brings new opportunities to make progress and achieve more.",
       "Everyone at AOJ Global wishes you and your team a successful and productive week ahead.",
-      "As always, we remain available to support your Mechanical, Electrical and Piping engineering requirements.",
+      "As always, we remain available to support your Mechanical, Electrical and Plumbing engineering requirements.",
       "Thank you for keeping AOJ Global in mind. We look forward to continuing to serve you.",
     ] }),
   },
@@ -173,7 +173,7 @@ export const TEMPLATE_CATALOG: CatalogTemplate[] = [
   {
     key: "customer-welcome", name: "New Customer Welcome", category: "Welcome", audience: "EXTERNAL", department: "Customer Relations",
     subject: "Welcome to AOJ Global, {{first_name}}", preheader: "We look forward to working with you.",
-    blocks: tpl({ title: "Welcome to AOJ Global", subtitle: "Mechanical · Electrical · Piping", tone: "brand", heading: "Dear {{first_name}},", sign: SIGN_CR, cta: { label: "Learn more about us", url: "{{company_website}}" }, body: [
+    blocks: tpl({ title: "Welcome to AOJ Global", subtitle: "Mechanical · Electrical · Plumbing", tone: "brand", heading: "Dear {{first_name}},", sign: SIGN_CR, cta: { label: "Learn more about us", url: "{{company_website}}" }, body: [
       "Thank you for choosing AOJ Global Concept Limited. We are delighted to welcome you.",
       "Our team is committed to delivering MEP engineering solutions with speed, quality and cost efficiency — and to being a dependable partner at every stage.",
       "If you have any questions, simply reply to this email and the right person on our team will respond.",
@@ -213,6 +213,29 @@ export const TEMPLATE_CATALOG: CatalogTemplate[] = [
     ] }),
   },
 ];
+
+// "What we do" reminder for customers (spec: relationship communication).
+TEMPLATE_CATALOG.push({
+  key: "services-customers", name: "Our Services – Customers", category: "Relationship", audience: "EXTERNAL", department: "Customer Relations",
+  subject: "{{first_name}}, here's how AOJ Global can support your next project", preheader: "Mechanical, Electrical and Plumbing engineering you can rely on.",
+  blocks: tpl({ title: "Engineering you can rely on", subtitle: "Mechanical · Electrical · Plumbing", heading: "Dear {{first_name}},", sign: SIGN_CR, cta: { label: "Talk to our team", url: "{{company_website}}" }, body: [
+    "Thank you for believing in AOJ Global. As your projects grow, we want you to know the full range of support available to you.",
+    "**Mechanical:** HVAC design, installation and maintenance, ventilation and fire-fighting systems.\n**Electrical:** power distribution, lighting, generators, solar and low-current systems.\n**Plumbing:** water supply, drainage, pumps and sanitary installations.",
+    "Every job is delivered by COREN-registered engineers under our ISO 9001:2015 quality and ISO 45001:2018 health & safety systems, and we are registered with NEMSA and NUPRC, for residential, commercial, industrial and energy-sector projects of any scale.",
+    "Whenever you are planning a new build, an upgrade or a maintenance programme, simply reply to this email and we will be glad to help.",
+  ] }),
+});
+
+/** Header artwork per template (public/email/art). Celebrations get distinctive designs. */
+export const ART_BY_TEMPLATE: Record<string, string> = {
+  "new-week-staff": "new-week", "new-week-customers": "new-week", "new-month-staff": "new-month", "new-month-customers": "new-month",
+  "birthday-staff": "birthday", "birthday-customers": "birthday", "work-anniversary": "anniversary", "relationship-anniversary": "anniversary", "company-anniversary": "anniversary",
+  "customer-appreciation": "thanks", "staff-appreciation": "thanks", "project-completion": "project", "project-milestone": "project", "customer-welcome": "welcome",
+  "staff-recognition": "recognition", "company-announcement": "announcement", "services-customers": "services",
+  christmas: "christmas", "new-year": "new-year", "eid-fitr": "eid", "eid-adha": "eid", "eid-maulud": "eid", easter: "easter",
+  "independence-day": "nigeria", "democracy-day": "nigeria", "workers-day": "engineering", "engineering-day": "engineering", "womens-day": "women",
+};
+for (const t of TEMPLATE_CATALOG) for (const b of t.blocks) if (b.type === "banner") b.art = ART_BY_TEMPLATE[t.key] ?? "announcement";
 
 function festive(key: string, name: string, subject: string, title: string, subtitle: string, body: string[], tone: Tone = "festive"): CatalogTemplate[] {
   return [{
@@ -261,6 +284,7 @@ export const AUTOMATION_CATALOG: CatalogAutomation[] = [
   { key: "weekly-customers", name: "Happy New Week – Customers", description: "Every Monday: light relationship greeting to consenting customers & partners.", trigger: "WEEKLY", weekday: 1, sendTime: "09:00", audience: "EXTERNAL", categories: CUSTOMER_CATS, templateKey: "new-week-customers", senderIdentity: "customers", isMarketing: true, requiresApproval: false, leadDays: 2, status: "PAUSED" },
   { key: "monthly-staff", name: "Happy New Month – Staff", description: "First day of every month.", trigger: "MONTHLY", dayOfMonth: 1, sendTime: "08:00", audience: "INTERNAL", categories: STAFF_CATS, templateKey: "new-month-staff", senderIdentity: "communications", isMarketing: false, requiresApproval: false, leadDays: 3, status: "ACTIVE" },
   { key: "monthly-customers", name: "Happy New Month – Customers", description: "First day of every month to consenting customers.", trigger: "MONTHLY", dayOfMonth: 1, sendTime: "09:00", audience: "EXTERNAL", categories: CUSTOMER_CATS, templateKey: "new-month-customers", senderIdentity: "customers", isMarketing: true, requiresApproval: false, leadDays: 3, status: "PAUSED" },
+  { key: "services-customers", name: "Our Services – Customers", description: "Mid-month reminder of what AOJ does, to consenting customers & partners.", trigger: "MONTHLY", dayOfMonth: 15, sendTime: "10:00", audience: "EXTERNAL", categories: CUSTOMER_CATS, templateKey: "services-customers", senderIdentity: "customers", isMarketing: true, requiresApproval: false, leadDays: 3, status: "PAUSED" },
   { key: "birthday-staff", name: "Staff Birthday Greetings", description: "On each employee's birthday.", trigger: "BIRTHDAY", sendTime: "08:00", audience: "INTERNAL", categories: ["STAFF", "MANAGEMENT", "CONTRACTOR"], templateKey: "birthday-staff", senderIdentity: "hr", isMarketing: false, requiresApproval: false, leadDays: 1, status: "ACTIVE" },
   { key: "birthday-customers", name: "Customer Birthday Greetings", description: "On a customer's birthday, where provided and consented.", trigger: "BIRTHDAY", sendTime: "09:00", audience: "EXTERNAL", categories: ["CUSTOMER", "PARTNER"], templateKey: "birthday-customers", senderIdentity: "customers", isMarketing: true, requiresApproval: false, leadDays: 1, status: "PAUSED" },
   { key: "work-anniversary", name: "Employment Anniversary", description: "On each employee's work anniversary (from date joined).", trigger: "WORK_ANNIVERSARY", sendTime: "08:00", audience: "INTERNAL", categories: ["STAFF", "MANAGEMENT"], templateKey: "work-anniversary", senderIdentity: "hr", isMarketing: false, requiresApproval: false, leadDays: 1, status: "ACTIVE" },

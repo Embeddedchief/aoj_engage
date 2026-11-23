@@ -5,7 +5,7 @@ import { DEPARTMENTS, ROLE_LABEL } from "@/lib/constants";
 import { fmtDateTime } from "@/lib/time";
 import { Badge, Card, PageHeader } from "@/components/ui";
 import { ActionForm, Submit } from "@/components/forms";
-import { createUser, updateUser } from "@/actions/admin";
+import { createUser, resetUserPassword, updateUser } from "@/actions/admin";
 import { SettingsTabs } from "../tabs";
 
 export const metadata = { title: "Users & roles" };
@@ -42,9 +42,13 @@ export default async function UsersPage() {
                         <input type="hidden" name="id" value={u.id} />
                         <select name="role" defaultValue={u.role} className="input w-auto py-1 text-xs">{roles.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}</select>
                         <select name="active" defaultValue={String(u.active)} className="input w-auto py-1 text-xs"><option value="true">Active</option><option value="false">Deactivated</option></select>
-                        <input name="password" type="password" placeholder="Reset password" className="input w-32 py-1 text-xs" autoComplete="new-password" />
-                        <Submit className="btn-secondary px-2 py-1 text-xs">Save</Submit>
+                        <Submit className="btn-secondary px-3 py-1 text-xs">Save</Submit>
                       </ActionForm>
+                      <ActionForm action={resetUserPassword} className="mt-1.5">
+                        <input type="hidden" name="id" value={u.id} />
+                        <Submit className="btn-ghost px-2 py-0.5 text-xs text-brand">Reset password &amp; email it</Submit>
+                      </ActionForm>
+                      {u.mustChangePassword && <div className="mt-1"><Badge tone="warn">Must set own password</Badge></div>}
                     </td>
                   </tr>
                 ))}
@@ -60,8 +64,9 @@ export default async function UsersPage() {
               <select className="input" name="role" defaultValue="COMMS_OFFICER">{roles.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}</select>
               <select className="input" name="department" defaultValue=""><option value="">Department…</option>{DEPARTMENTS.map((d) => <option key={d}>{d}</option>)}</select>
               <input className="input" name="position" placeholder="Position (used as sender position)" />
-              <input className="input" name="password" type="password" placeholder="Temporary password (12+ chars)" required autoComplete="new-password" />
-              <Submit className="btn-primary w-full">Create account</Submit>
+              <input className="input" name="password" type="text" placeholder="Temporary password (leave empty to generate)" autoComplete="off" />
+              <Submit className="btn-primary w-full">Create account &amp; email login details</Submit>
+              <p className="text-xs text-muted">They receive an AOJ email with a temporary password, and must choose their own password the first time they sign in.</p>
             </ActionForm>
           </Card>
           <Card title="Role permissions">

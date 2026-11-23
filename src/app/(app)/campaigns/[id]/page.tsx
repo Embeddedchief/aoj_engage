@@ -16,6 +16,7 @@ import { ActionButton, ActionForm, Submit } from "@/components/forms";
 import { decideCampaign, excludeRecipient, scheduleCampaign, sendCampaignTest, setCampaignState, submitForApproval } from "@/actions/campaigns";
 
 export const metadata = { title: "Campaign" };
+export const maxDuration = 60; // "Send now" keeps sending in the background
 const RTONE = { ACCEPTED: "ok", DELIVERED: "ok", QUEUED: "info", SENDING: "info", SUPPRESSED: "neutral", BOUNCED: "bad", COMPLAINED: "bad", REJECTED: "bad", FAILED: "bad" } as const;
 
 export default async function CampaignPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ as?: string; status?: string }> }) {

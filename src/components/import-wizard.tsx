@@ -103,7 +103,7 @@ export function ImportWizard({ categories }: { categories: ContactCategory[] }) 
             <input type="file" name="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="mt-4 text-sm" required />
           </label>
           <div className="mt-4 flex items-center justify-between gap-3">
-            <a className="link text-sm" href={`data:text/csv;charset=utf-8,${encodeURIComponent("First Name,Last Name,Email,Category,Birthday,Company,Department,Job Title,Phone,City\nJohn,Ade,john@example.com,Customer,12/03/1990,ABC Ltd,,Facilities Manager,,Lagos\nMary,James,mary@example.com,Staff,18/06/1995,AOJ Global,Human Resources,HR Officer,,Lagos\n")}`} download="aoj-engage-import-template.csv">Download a sample template</a>
+            <a className="link text-sm" href={`data:text/csv;charset=utf-8,${encodeURIComponent("First Name,Last Name,Email,Category,Birthday,Company,Department,Job Title,Phone,City\n")}`} download="aoj-engage-import-template.csv">Download a sample template</a>
             <button className="btn-primary" disabled={pending}>{pending && <Loader2 className="h-4 w-4 animate-spin" />} Upload & detect columns</button>
           </div>
         </form>

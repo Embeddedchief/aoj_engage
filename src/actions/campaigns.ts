@@ -1,4 +1,5 @@
 "use server";
+import type { Role } from "@prisma/client";
 
 import { after } from "next/server";
 import type { Audience, CampaignType, ContactCategory } from "@prisma/client";
@@ -9,7 +10,7 @@ import { opt, run, str, type ActionResult } from "@/lib/action";
 import { canWorkWithAudience } from "@/lib/permissions";
 import { contactWhere, type SegmentRules } from "@/lib/segments";
 import { getSettings } from "@/lib/settings";
-import { dispatchDue, renderForContact } from "@/lib/engine";
+import { drainCampaign, renderForContact } from "@/lib/engine";
 import { sendEmail } from "@/lib/email/provider";
 import { fromLocalInput } from "@/lib/time";
 import { isValidEmail, normEmail } from "@/lib/utils";
@@ -47,6 +48,9 @@ function readForm(fd: FormData) {
     isMarketing: fd.has("classification") ? str(fd, "classification") === "marketing" : MARKETING_TYPES.includes(type) && audience !== "INTERNAL",
   };
 }
+
+/** Admins and communications staff may send a [TEST] copy to any address (e.g. sales or marketing reviewers). */
+const canTestAnyAddress = (role: Role) => role === "SUPER_ADMIN" || role === "COMMS_OFFICER" || role === "HR";
 
 export async function createCampaign(_: ActionResult | null, fd: FormData): Promise<ActionResult> {
   return run(async () => {
@@ -163,7 +167,7 @@ export async function scheduleCampaign(_: ActionResult | null, fd: FormData): Pr
     if (!scheduledAt) throw new Error("Set a sending date and time first.");
     await prisma.campaign.update({ where: { id: c.id }, data: { status: "SCHEDULED", scheduledAt, approvedRevision: c.requiresApproval ? c.approvedRevision : c.revision } });
     await audit(u.id, now ? "campaign.send_now" : "campaign.scheduled", "Campaign", c.id, c.name);
-    if (now || scheduledAt <= new Date()) after(() => dispatchDue().then(() => undefined).catch((e) => console.error("dispatch failed", e)));
+    if (now || scheduledAt <= new Date()) after(() => drainCampaign(c.id).then(() => undefined).catch((e) => console.error("dispatch failed", e)));
     return { ok: true, message: now ? "Sending has started in the background. Refresh in a moment to see progress." : "Scheduled." };
   });
 }
@@ -199,7 +203,7 @@ export async function setCampaignState(_: ActionResult | null, fd: FormData): Pr
       });
       if (r.count === 0) return { ok: true, message: "No retryable failures." };
       await prisma.campaign.update({ where: { id: c.id }, data: { status: "SCHEDULED", completedAt: null } });
-      after(() => dispatchDue().then(() => undefined).catch(console.error));
+      after(() => drainCampaign(c.id).then(() => undefined).catch(console.error));
       await audit(u.id, "campaign.retry", "Campaign", c.id, `${r.count} recipient(s) requeued`);
       return { ok: true, message: `${r.count} message(s) queued for retry.` };
     } else throw new Error("Unknown operation.");
@@ -230,7 +234,7 @@ export async function sendCampaignTest(_: ActionResult | null, fd: FormData): Pr
     const c = await prisma.campaign.findUniqueOrThrow({ where: { id: str(fd, "id") }, include: { templateVersion: true, recipients: { take: 1, include: { contact: true } } } });
     const to = normEmail(str(fd, "to"));
     if (!isValidEmail(to)) throw new Error("Enter a valid email address.");
-    if (to !== normEmail(u.email) && !s.sending.testRecipientDomains.includes(to.split("@")[1])) throw new Error(`Tests can only go to your own address or to: ${s.sending.testRecipientDomains.join(", ")}`);
+    if (!canTestAnyAddress(u.role) && to !== normEmail(u.email) && !s.sending.testRecipientDomains.map((d) => d.toLowerCase()).includes(to.split("@")[1])) throw new Error(`Tests can only go to your own address or to: ${s.sending.testRecipientDomains.join(", ")}`);
     const sample = c.recipients[0]?.contact;
     if (!sample) throw new Error("The campaign has no recipients to personalise the test with.");
     const msg = await renderForContact({ settings: s, subject: c.templateVersion.subject, preheader: c.templateVersion.preheader, blocks: c.templateVersion.blocks as unknown as EmailBlock[], contact: sample, senderId: c.senderIdentity, eventName: c.eventName, eventDate: c.eventDate, external: false, isTest: true });

@@ -30,6 +30,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     can(r, "contacts:read:external") && { href: "/contacts?group=prospects", label: "Prospects", icon: "prospects", section: "Contacts" },
     { href: "/segments", label: "Segments", icon: "segments", section: "Contacts" },
     (can(r, "contacts:write:internal") || can(r, "contacts:write:external")) && { href: "/contacts/import", label: "Import", icon: "import", section: "Contacts" },
+    can(r, "campaigns:write") && { href: "/broadcast", label: "Broadcast", icon: "broadcast", section: "Communicate" },
     { href: "/calendar", label: "Calendar", icon: "calendar", section: "Communicate" },
     { href: "/templates", label: "Templates", icon: "templates", section: "Communicate" },
     { href: "/campaigns", label: "Campaigns", icon: "campaigns", section: "Communicate" },

@@ -1,4 +1,5 @@
 "use server";
+import { generateTempPassword, sendLoginDetails, sendPasswordChanged } from "@/lib/account-email";
 
 import type { Role } from "@prisma/client";
 import { prisma } from "@/lib/db";
@@ -81,12 +82,15 @@ export async function createUser(_: ActionResult | null, fd: FormData): Promise<
     const role = str(fd, "role") as Role;
     if (!isValidEmail(email)) throw new Error("Enter a valid email.");
     if (!ROLES.includes(role)) throw new Error("Choose a role.");
-    const pw = str(fd, "password");
+    if (!str(fd, "name")) throw new Error("Enter the person's name.");
+    if (await prisma.user.findUnique({ where: { email } })) throw new Error("An account with this email already exists.");
+    const pw = str(fd, "password") || generateTempPassword();
     const problem = passwordProblem(pw);
     if (problem) throw new Error(problem);
     const created = await prisma.user.create({ data: { email, name: str(fd, "name"), role, department: str(fd, "department") || null, position: str(fd, "position") || null, passwordHash: await hashPassword(pw), mustChangePassword: true } });
     await audit(u.id, "user.created", "User", created.id, `${email} as ${role}`, await clientIp());
-    return { ok: true, message: `Account created for ${email}. Share the temporary password securely.` };
+    const mail = await sendLoginDetails({ to: email, name: created.name, tempPassword: pw, invitedBy: u.name });
+    return { ok: true, message: `Account created for ${email}. Temporary password: ${pw}. ${mailNote(mail)}` };
   });
 }
 
@@ -119,6 +123,24 @@ export async function updateUser(_: ActionResult | null, fd: FormData): Promise<
   });
 }
 
+function mailNote(r: { ok: boolean; mode: string } & ({ simulated?: boolean } | { error?: string })) {
+  if (!r.ok) return "The login email could not be sent, so share the password with them directly.";
+  return r.mode === "simulation" ? "No email provider is connected yet, so share the password with them directly." : "Their login details have been emailed to them.";
+}
+
+/** Admin password reset: issues a new temporary password, signs the user out and emails them. */
+export async function resetUserPassword(_: ActionResult | null, fd: FormData): Promise<ActionResult> {
+  return run(async () => {
+    const u = await assertPermission("users:write");
+    const target = await prisma.user.findUniqueOrThrow({ where: { id: str(fd, "id") } });
+    const pw = generateTempPassword();
+    await prisma.user.update({ where: { id: target.id }, data: { passwordHash: await hashPassword(pw), mustChangePassword: true, failedLogins: 0, lockedUntil: null, sessionEpoch: { increment: 1 } } });
+    await audit(u.id, "user.password_reset", "User", target.id, target.email, await clientIp());
+    const mail = await sendLoginDetails({ to: target.email, name: target.name, tempPassword: pw, invitedBy: u.name, reset: true });
+    return { ok: true, message: `New temporary password for ${target.name}: ${pw}. ${mailNote(mail)}` };
+  });
+}
+
 export async function changeOwnPassword(_: ActionResult | null, fd: FormData): Promise<ActionResult> {
   return run(async () => {
     const u = await assertUser();
@@ -130,7 +152,8 @@ export async function changeOwnPassword(_: ActionResult | null, fd: FormData): P
     if (await verifyPassword(u.passwordHash, pw)) throw new Error("Choose a password different from the current one.");
     await prisma.user.update({ where: { id: u.id }, data: { passwordHash: await hashPassword(pw), mustChangePassword: false, sessionEpoch: { increment: 1 } } });
     await audit(u.id, "user.password_changed", "User", u.id);
-    return { ok: true, redirectTo: "/login" };
+    await sendPasswordChanged({ to: u.email, name: u.name }).catch(() => undefined);
+    return { ok: true, redirectTo: "/login?changed=1" };
   });
 }
 

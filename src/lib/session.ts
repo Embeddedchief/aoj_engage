@@ -9,7 +9,8 @@ function key() {
   return new TextEncoder().encode(s);
 }
 
-export type SessionPayload = { uid: string; epoch: number };
+/** mcp = must change password (issued/temporary password); cleared by signing in again after changing it. */
+export type SessionPayload = { uid: string; epoch: number; mcp?: boolean };
 
 export async function signSession(p: SessionPayload) {
   return new SignJWT(p).setProtectedHeader({ alg: "HS256" }).setIssuedAt().setExpirationTime(`${SESSION_HOURS}h`).sign(key());
@@ -19,7 +20,7 @@ export async function verifySession(token: string | undefined): Promise<SessionP
   if (!token) return null;
   try {
     const { payload } = await jwtVerify(token, key(), { algorithms: ["HS256"] });
-    return { uid: String(payload.uid), epoch: Number(payload.epoch) };
+    return { uid: String(payload.uid), epoch: Number(payload.epoch), mcp: payload.mcp === true };
   } catch {
     return null;
   }

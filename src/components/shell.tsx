@@ -5,14 +5,14 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowUpRight, BarChart3, Bell, BookUser, Briefcase, CalendarDays, CheckCircle2, FileClock, Handshake, HelpCircle, Image as ImageIcon, LayoutDashboard,
-  LayoutTemplate, ListFilter, LogOut, Megaphone, Menu, Search, Settings, ShieldCheck, Sparkles, Upload, UserRound, Users, Workflow, X,
+  LayoutTemplate, ListFilter, LogOut, Megaphone, Menu, Search, Send, Settings, ShieldCheck, Sparkles, Upload, UserRound, Users, Workflow, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const ICONS = {
   dashboard: LayoutDashboard, contacts: BookUser, staff: Users, customers: Briefcase, partners: Handshake, prospects: UserRound, segments: ListFilter,
   import: Upload, calendar: CalendarDays, templates: LayoutTemplate, campaigns: Megaphone, automations: Workflow, approvals: CheckCircle2,
-  analytics: BarChart3, media: ImageIcon, settings: Settings, users: ShieldCheck, audit: FileClock,
+  analytics: BarChart3, media: ImageIcon, settings: Settings, users: ShieldCheck, audit: FileClock, broadcast: Send,
 };
 export type IconName = keyof typeof ICONS;
 export type NavItem = { href: string; label: string; icon: IconName; badge?: number; section?: string };
@@ -52,7 +52,7 @@ export function Shell({ nav, user, unread, canBroadcast, logoutAction, children 
     <nav className="flex h-full flex-col">
       <Link href="/" className="group flex items-center gap-3 px-5 pb-4 pt-5">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/icon.png" alt="AOJ Global" className="h-11 w-11 rounded-2xl bg-white object-contain p-0.5 ring-1 ring-line transition group-hover:rotate-[-6deg] group-hover:scale-105" />
+        <img src="/icon.png" alt="AOJ Global" width={48} height={48} className="h-12 w-12 object-contain transition group-hover:scale-105" />
         <div className="min-w-0">
           <div className="flex items-center gap-1.5 text-[15px] font-extrabold leading-none tracking-tight text-navy">
             AOJ Engage
@@ -96,7 +96,7 @@ export function Shell({ nav, user, unread, canBroadcast, logoutAction, children 
             <div className="flex items-center gap-2 text-sm font-bold"><Megaphone className="h-4 w-4 text-brand-300" /> Broadcast centre</div>
             <p className="mt-1 hidden text-xs leading-relaxed text-white/60 [@media(min-height:960px)]:block">Adverts, greetings and announcements to every AOJ audience.</p>
             {canBroadcast ? (
-              <Link href="/campaigns/new" className="mt-3 flex items-center justify-between rounded-full bg-white py-1.5 pl-4 pr-1.5 text-xs font-bold text-navy transition hover:bg-brand-50">
+              <Link href="/broadcast" className="mt-3 flex items-center justify-between rounded-full bg-white py-1.5 pl-4 pr-1.5 text-xs font-bold text-navy transition hover:bg-brand-50">
                 New broadcast <span className="grid h-7 w-7 place-items-center rounded-full bg-brand text-white"><ArrowUpRight className="h-3.5 w-3.5" /></span>
               </Link>
             ) : (

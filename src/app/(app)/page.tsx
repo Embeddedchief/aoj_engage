@@ -10,7 +10,7 @@ import { occurrencesBetween, type Occurrence } from "@/lib/calendar";
 import { addDays, daysBetween, daysInMonth, fmtDateTime, fmtLocal, lagosParts, MONTHS, todayLocal, toLocalDate, weekdayOf } from "@/lib/time";
 import { AUDIENCE_LABEL, STATUS_TONE } from "@/lib/constants";
 import { visibleAudiences, visibleCategories } from "@/lib/queries";
-import { providerMode } from "@/lib/email/provider";
+import { PROVIDER_LABEL, providerMode } from "@/lib/email/provider";
 import { cn, pct, titleCase } from "@/lib/utils";
 import { Badge, Empty, Notice, StatCard } from "@/components/ui";
 import { ActionButton } from "@/components/forms";
@@ -38,7 +38,11 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   const nextM = cm === 12 ? `${cy + 1}-01` : `${cy}-${String(cm + 1).padStart(2, "0")}`;
   const from14 = addDays(today, -13);
 
-  const [contacts, staff, customers, recipients30, scheduled, pending, recent, occ, monthOcc, upcomingCampaigns, engine, daily] = await Promise.all([
+  // One calendar pass covers both the 14-day agenda and the month widget.
+  const in14 = addDays(today, 14);
+  const occFrom = monthStart < today ? monthStart : today;
+  const occTo = monthEnd > in14 ? monthEnd : in14;
+  const [contacts, staff, customers, recipients30, scheduled, pending, recent, allOcc, upcomingCampaigns, engine, daily] = await Promise.all([
     prisma.contact.count({ where: { status: "ACTIVE", category: { in: cats } } }),
     prisma.contact.count({ where: { status: "ACTIVE", category: { in: ["STAFF", "MANAGEMENT", "CONTRACTOR"] } } }),
     prisma.contact.count({ where: { status: "ACTIVE", category: { in: ["CUSTOMER"] } } }),
@@ -46,8 +50,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
     prisma.campaign.count({ where: { status: { in: ["SCHEDULED", "APPROVED"] }, audience: { in: auds } } }),
     prisma.campaign.count({ where: { status: "AWAITING_APPROVAL", audience: { in: auds } } }),
     prisma.auditLog.findMany({ orderBy: { createdAt: "desc" }, take: 8, include: { user: { select: { name: true } } } }),
-    occurrencesBetween(today, addDays(today, 14), { includeExternalPeople: auds.includes("EXTERNAL") }),
-    occurrencesBetween(monthStart, monthEnd, { includeExternalPeople: auds.includes("EXTERNAL") }),
+    occurrencesBetween(occFrom, occTo, { includeExternalPeople: auds.includes("EXTERNAL") }),
     prisma.campaign.findMany({ where: { eventDate: { gte: today, lte: addDays(today, 14) }, audience: { in: auds } }, select: { id: true, name: true, status: true, eventDate: true, automationId: true, automation: { select: { eventId: true, trigger: true } } } }),
     prisma.setting.findUnique({ where: { key: "engine.lastRun" } }),
     prisma.$queryRaw<{ d: string; n: number }[]>(Prisma.sql`
@@ -57,6 +60,8 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
       GROUP BY 1`),
   ]);
 
+  const occ = allOcc.filter((o) => o.date >= today && o.date <= in14);
+  const monthOcc = allOcc.filter((o) => o.date >= monthStart && o.date <= monthEnd);
   const n = Object.fromEntries(recipients30.map((r) => [r.status, r._count])) as Record<string, number>;
   const accepted = (n.ACCEPTED ?? 0) + (n.DELIVERED ?? 0);
   const failed = (n.FAILED ?? 0) + (n.BOUNCED ?? 0) + (n.REJECTED ?? 0) + (n.COMPLAINED ?? 0);
@@ -132,7 +137,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
           <p className="mt-2 text-sm text-muted">Your messaging and broadcast centre · {fmtLocal(today, { weekday: true })}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {can(user.role, "campaigns:write") && <Link href="/campaigns/new" className="btn-primary"><Megaphone className="h-4 w-4" /> New broadcast</Link>}
+          {can(user.role, "campaigns:write") && <Link href="/broadcast" className="btn-primary"><Megaphone className="h-4 w-4" /> New broadcast</Link>}
           {(can(user.role, "contacts:write:internal") || can(user.role, "contacts:write:external")) && <Link href="/contacts/new" className="btn-secondary"><UserPlus className="h-4 w-4" /> Add contact</Link>}
         </div>
       </div>
@@ -140,7 +145,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
       {(denied || (mode === "simulation" && can(user.role, "settings:write"))) && (
         <div className="mb-5 space-y-3">
           {denied && <Notice tone="warn">You don&apos;t have permission to open that page. Contact the ICT Administrator if you need access.</Notice>}
-          {mode === "simulation" && can(user.role, "settings:write") && <Notice tone="warn" title="Simulation mode">Amazon SES credentials are not configured, so deliveries are recorded but no real email leaves the system. Add the AWS_* environment variables in Vercel to go live.</Notice>}
+          {mode === "simulation" && can(user.role, "settings:write") && <Notice tone="warn" title="Simulation mode">No email provider is connected, so deliveries are recorded but no real email leaves the system. Add BREVO_API_KEY (free: 300 emails/day) in Vercel to go live.</Notice>}
         </div>
       )}
 
@@ -357,9 +362,9 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
             <h2 className="flex items-center gap-2 text-[15px] font-bold text-navy"><Cpu className="h-4 w-4" /> Broadcast engine</h2>
             <div className="mt-4 space-y-2.5 text-sm">
               <div className="flex items-center justify-between"><span className="text-muted">Provider</span>
-                <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-bold", mode === "ses" ? "bg-emerald-50 text-ok" : "bg-amber-50 text-warn")}>
-                  <span className="relative flex h-1.5 w-1.5"><span className={cn("absolute inset-0 animate-ping2 rounded-full", mode === "ses" ? "bg-ok" : "bg-warn")} /><span className={cn("relative h-1.5 w-1.5 rounded-full", mode === "ses" ? "bg-ok" : "bg-warn")} /></span>
-                  {mode === "ses" ? "Amazon SES · live" : "Simulation"}
+                <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-bold", mode !== "simulation" ? "bg-emerald-50 text-ok" : "bg-amber-50 text-warn")}>
+                  <span className="relative flex h-1.5 w-1.5"><span className={cn("absolute inset-0 animate-ping2 rounded-full", mode !== "simulation" ? "bg-ok" : "bg-warn")} /><span className={cn("relative h-1.5 w-1.5 rounded-full", mode !== "simulation" ? "bg-ok" : "bg-warn")} /></span>
+                  {mode !== "simulation" ? `${PROVIDER_LABEL[mode]} · live` : "Simulation"}
                 </span>
               </div>
               <div className="flex justify-between"><span className="text-muted">Last run</span><span className="font-medium">{last?.at ? fmtDateTime(new Date(last.at)) : "Never"}</span></div>
@@ -374,7 +379,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
               {([
                 ["/contacts/new?category=STAFF", "Add staff", Users],
                 ["/contacts/new?category=CUSTOMER", "Add customer", Briefcase],
-                ["/campaigns/new", "New broadcast", Megaphone],
+                ["/broadcast", "New broadcast", Megaphone],
                 ["/templates/new", "New template", LayoutTemplate],
                 ["/calendar?new=1", "Add occasion", CalendarPlus],
                 ["/contacts/import", "Import list", BookUser],

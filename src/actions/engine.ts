@@ -8,7 +8,7 @@ export async function runEngineNow(_: ActionResult | null, _fd: FormData): Promi
   return run(async () => {
     const u = await assertPermission("engine:run");
     const r = await runTick(new Date(), u.id);
-    const msg = [`Engine ran in ${r.ms} ms (${r.mode === "ses" ? "Amazon SES" : "simulation mode"}).`, ...r.planned, ...r.dispatched].join(" ");
+    const msg = [`Engine ran in ${r.ms} ms (${r.mode === "simulation" ? "simulation mode" : r.mode === "brevo" ? "Brevo" : "Amazon SES"}).`, ...r.planned, ...r.dispatched].join(" ");
     return { ok: true, message: r.planned.length + r.dispatched.length === 0 ? `${msg} Nothing was due.` : msg };
   });
 }

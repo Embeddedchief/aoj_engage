@@ -1,4 +1,5 @@
 "use server";
+import type { Role } from "@prisma/client";
 
 import type { Audience } from "@prisma/client";
 import { prisma } from "@/lib/db";
@@ -29,6 +30,9 @@ function cleanBlocks(blocks: unknown): EmailBlock[] {
     return out as EmailBlock;
   });
 }
+
+/** Admins and communications staff may send a [TEST] copy to any address (e.g. sales or marketing reviewers). */
+const canTestAnyAddress = (role: Role) => role === "SUPER_ADMIN" || role === "COMMS_OFFICER" || role === "HR";
 
 export async function createTemplate(_: ActionResult | null, fd: FormData): Promise<ActionResult> {
   return run(async () => {
@@ -114,11 +118,12 @@ export async function sendTest(input: { to: string; subject: string; preheader: 
     const to = normEmail(input.to);
     if (!isValidEmail(to)) throw new Error("Enter a valid test email address.");
     const domain = to.split("@")[1];
-    if (to !== normEmail(u.email) && !s.sending.testRecipientDomains.map((d) => d.toLowerCase()).includes(domain)) {
+    if (!canTestAnyAddress(u.role) && to !== normEmail(u.email) && !s.sending.testRecipientDomains.map((d) => d.toLowerCase()).includes(to.split("@")[1])) {
       throw new Error(`Tests can only go to your own address or to: ${s.sending.testRecipientDomains.join(", ")}`);
     }
     const contact = input.contactId ? await prisma.contact.findUnique({ where: { id: input.contactId } }) : null;
-    const sample = contact ?? { id: "sample", firstName: "John", lastName: "Ade", preferredName: null, organisation: "ABC Ltd", department: "Engineering", jobTitle: "Mechanical Engineer", category: input.audience === "INTERNAL" ? "STAFF" : "CUSTOMER" } as const;
+    const [first, ...rest] = u.name.split(/s+/);
+    const sample = contact ?? { id: "sample", firstName: first || "Augustine", lastName: rest.join(" ") || "", preferredName: null, organisation: "Your client company", department: u.department ?? "Engineering", jobTitle: u.position ?? "Engineer", category: input.audience === "INTERNAL" ? "STAFF" : "CUSTOMER" } as const;
     const msg = await renderForContact({ settings: s, subject: input.subject, preheader: input.preheader, blocks: cleanBlocks(input.blocks), contact: sample, senderId: input.senderId, eventName: input.eventName, external: false, isTest: true, yearsOfService: 5, projectName: "Sample Project" });
     const res = await sendEmail({ to, from: `${msg.sender.name} <${msg.sender.email}>`, subject: msg.subject, html: msg.html, text: msg.text });
     await audit(u.id, "test.sent", "Template", undefined, `Test "${msg.subject}" → ${to}: ${res.ok ? (res.simulated ? "simulated" : "accepted") : res.error}`);

@@ -10,8 +10,8 @@ import { dummyVerify, hashPassword, passwordProblem, rateLimit, verifyPassword }
 import { SESSION_COOKIE, SESSION_HOURS, signSession } from "@/lib/session";
 import { isValidEmail, normEmail } from "@/lib/utils";
 
-async function startSession(user: { id: string; sessionEpoch: number }) {
-  const token = await signSession({ uid: user.id, epoch: user.sessionEpoch });
+async function startSession(user: { id: string; sessionEpoch: number; mustChangePassword?: boolean }) {
+  const token = await signSession({ uid: user.id, epoch: user.sessionEpoch, mcp: !!user.mustChangePassword });
   (await cookies()).set(SESSION_COOKIE, token, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: SESSION_HOURS * 3600 });
 }
 
@@ -40,6 +40,7 @@ export async function login(_: ActionResult | null, fd: FormData): Promise<Actio
     await prisma.user.update({ where: { id: user.id }, data: { failedLogins: 0, lockedUntil: null, lastLoginAt: new Date() } });
     await startSession(user);
     await audit(user.id, "auth.login", "User", user.id, undefined, ip);
+    if (user.mustChangePassword) return { ok: true, redirectTo: "/settings/account?first=1" };
     const next = str(fd, "next");
     return { ok: true, redirectTo: next.startsWith("/") && !next.startsWith("//") ? next : "/" };
   });

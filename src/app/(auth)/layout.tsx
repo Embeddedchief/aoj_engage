@@ -11,10 +11,10 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <header className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/icon.png" alt="AOJ Global Concept Limited" className="h-12 w-12 rounded-2xl object-contain ring-1 ring-line" />
+              <img src="/icon.png" alt="AOJ Global Concept Limited" width={56} height={56} className="h-14 w-14 object-contain" />
               <div className="leading-tight">
                 <div className="text-[15px] font-extrabold tracking-tight text-navy">AOJ Engage</div>
-                <div className="text-[11px] font-medium text-muted">AOJ Global Concept Ltd · MEP</div>
+                <div className="text-[11px] font-medium text-muted">Customer Communication Management</div>
               </div>
             </div>
             <nav className="hidden gap-6 text-xs font-medium text-muted sm:flex">
@@ -31,7 +31,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
               every audience.
             </h1>
             <p className="mt-4 max-w-md animate-rise text-sm leading-relaxed text-muted [animation-delay:80ms]">
-              The messaging and broadcast centre of AOJ Global. Staff greetings, customer adverts and company announcements, prepared once and delivered on schedule.
+              Customer communication management and the broadcast centre of AOJ Global. Staff greetings, customer adverts and company announcements, prepared once and delivered on schedule.
             </p>
             <div className="mt-8 w-full max-w-sm animate-rise [animation-delay:160ms]">{children}</div>
           </div>
@@ -83,7 +83,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           </div>
 
           {/* Floating speech bubbles */}
-          <Bubble className="left-[10%] top-[20%] [--r:-8deg]" delay="0s" tone="red">Happy Birthday, Ada! 🎂</Bubble>
+          <Bubble className="left-[10%] top-[20%] [--r:-8deg]" delay="0s" tone="red">Happy Birthday, Augustine! 🎂</Bubble>
           <Bubble className="right-[9%] top-[17%] [--r:6deg]" delay="-1.5s" tone="dark">Approved ✓</Bubble>
           <Bubble className="bottom-[26%] right-[14%] [--r:-4deg]" delay="-3s" tone="white">Eid Mubarak 🌙</Bubble>
           <Bubble className="bottom-[30%] left-[9%] [--r:5deg]" delay="-4.5s" tone="white">New project update</Bubble>
@@ -91,7 +91,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           {/* Delivered counter chip */}
           <div className="absolute left-[54%] top-[24%] flex animate-pop items-center gap-2 rounded-full bg-white py-1.5 pl-1.5 pr-3 shadow-lift [animation-delay:.6s]">
             <span className="grid h-7 w-7 place-items-center rounded-full bg-ok text-white"><Send className="h-3.5 w-3.5" /></span>
-            <span className="text-xs font-bold text-navy">248 staff reached</span>
+            <span className="text-xs font-bold text-navy">More staff reached</span>
           </div>
 
           {/* Paper plane */}
