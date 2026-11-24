@@ -88,13 +88,27 @@ export function findInvalidLinks(blocks: EmailBlock[], vars: RenderVars, flags: 
     const urls = b.type === "button" ? [b.url] : b.type === "image" ? [b.url] : b.type === "banner" && b.imageUrl ? [b.imageUrl] : [];
     for (const u of urls) {
       const v = fill(u, vars, flags, false).trim();
-      if (!v || !isSafeUrl(v)) bad.push(`${b.type}: ${v || "(empty)"}`);
+      if (!v || (!isSafeUrl(v) && !isMediaPath(v))) bad.push(`${b.type}: ${v || "(empty)"}`);
+    }
+    if (b.type === "image" && b.link) {
+      const v = fill(b.link, vars, flags, false).trim();
+      if (v && !isSafeUrl(v)) bad.push(`image link: ${v}`);
     }
   }
   return bad;
 }
 
-const C = { brand: "#E5120E", navy: "#15171E", ink: "#2A2C35", muted: "#6B6D78", line: "#ECEBE7", canvas: "#F3F2EF", soft: "#FFF2F1" };
+/** Files uploaded through the media library are stored as site paths like /email/media/<id>. */
+const isMediaPath = (u: string) => /^\/email\/media\/[a-z0-9]+$/i.test(u);
+
+/** Image source for an email: uploaded media → absolute site URL; otherwise an https link. "" if unusable. */
+function imageSrc(raw: string, vars: RenderVars, flags: RenderFlags) {
+  const u = fill(raw, vars, flags, false).trim();
+  if (isMediaPath(u)) return assetUrl(u);
+  return isSafeUrl(u) ? u : "";
+}
+
+const C = { brand:"#E5120E", navy: "#15171E", ink: "#2A2C35", muted: "#6B6D78", line: "#ECEBE7", canvas: "#F3F2EF", soft: "#FFF2F1" };
 const FONT = "'Segoe UI',Helvetica,Arial,sans-serif";
 
 /** Absolute URL for files in /public. Emails need the public APP_URL; the in-app preview uses relative paths. */
@@ -142,10 +156,11 @@ function renderBlock(b: EmailBlock, vars: RenderVars, flags: RenderFlags, brand:
     }
     case "banner": {
       const art = b.art && /^[a-z0-9-]+$/.test(b.art) ? assetUrl(`/email/art/${b.art}.jpg`) : "";
-      const customUrl = b.imageUrl ? fill(b.imageUrl, vars, flags, false) : "";
-      const img = customUrl && isSafeUrl(customUrl) ? customUrl : art;
+      const img = (b.imageUrl ? imageSrc(b.imageUrl, vars, flags) : "") || art;
       if (img) {
-        return `<tr><td style="padding:0 20px"><img src="${escapeHtml(img)}" alt="" width="560" style="display:block;width:100%;max-width:560px;height:auto;border-radius:18px;border:0"></td></tr>
+        const pic = `<img src="${escapeHtml(img)}" alt="${escapeHtml(b.title ? fill(b.title, vars, flags, false) : "")}" width="560" style="display:block;width:100%;max-width:560px;height:auto;border-radius:18px;border:0">`;
+        const link = b.link ? fill(b.link, vars, flags, false).trim() : "";
+        return `<tr><td style="padding:0 20px">${link && isSafeUrl(link) ? `<a href="${escapeHtml(link)}" target="_blank" style="text-decoration:none">${pic}</a>` : pic}</td></tr>
         ${b.title ? `<tr><td style="padding:30px 44px 0;font:800 30px/1.2 ${FONT};color:${C.navy};letter-spacing:-.3px">${f(b.title)}</td></tr>` : ""}
         ${b.subtitle ? `<tr><td style="padding:8px 44px 0;font:700 12px/1.5 ${FONT};color:${C.brand};letter-spacing:1px;text-transform:uppercase">${f(b.subtitle)}</td></tr>` : ""}
         <tr><td style="padding:20px 44px 0"><div style="width:44px;height:4px;border-radius:4px;background:${C.brand};font-size:0;line-height:0">&nbsp;</div></td></tr>`;
@@ -162,9 +177,13 @@ function renderBlock(b: EmailBlock, vars: RenderVars, flags: RenderFlags, brand:
     case "paragraph":
       return `<tr><td style="padding:14px 44px 0">${richText(b.text, vars, flags, `font:400 16px/1.7 ${FONT};color:${C.ink}`)}</td></tr>`;
     case "image": {
-      const u = fill(b.url, vars, flags, false);
-      if (!isSafeUrl(u)) return "";
-      return `<tr><td style="padding:12px 44px"><img src="${escapeHtml(u)}" alt="${escapeHtml(b.alt ?? "")}" width="512" style="display:block;width:100%;max-width:512px;border-radius:14px;border:0"></td></tr>`;
+      const u = imageSrc(b.url, vars, flags);
+      if (!u) return "";
+      const w = b.full ? 560 : 512;
+      let tag = `<img src="${escapeHtml(u)}" alt="${escapeHtml(b.alt ?? "")}" width="${w}" style="display:block;width:100%;max-width:${w}px;height:auto;border-radius:16px;border:0">`;
+      const link = b.link ? fill(b.link, vars, flags, false).trim() : "";
+      if (link && isSafeUrl(link)) tag = `<a href="${escapeHtml(link)}" target="_blank" style="text-decoration:none">${tag}</a>`;
+      return `<tr><td style="padding:${b.full ? "14px 20px" : "12px 44px"}">${tag}</td></tr>`;
     }
     case "button": {
       const u = fill(b.url, vars, flags, false);

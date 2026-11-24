@@ -7,6 +7,7 @@ import { BROADCAST_GROUPS, BROADCAST_KINDS, buildBroadcastBlocks, type Broadcast
 import { contactVars, contactFlags, renderEmail, type Brand } from "@/lib/email/render";
 import { countBroadcastRecipients, sendBroadcast, testBroadcast } from "@/actions/broadcast";
 import { FormMessage, Submit } from "@/components/forms";
+import { FlyerUpload } from "@/components/flyer-upload";
 import { cn } from "@/lib/utils";
 
 const KIND_ICON = { announcement: Megaphone, urgent: AlertTriangle, meeting: CalendarClock, celebration: PartyPopper, advert: Tag } as const;
@@ -29,6 +30,9 @@ export function BroadcastComposer({ brand, userName, userEmail, groups }: { bran
   const [buttonLabel, setButtonLabel] = useState("");
   const [buttonUrl, setButtonUrl] = useState("");
   const [signOff, setSignOff] = useState(`Regards,\n**${userName}**\nAOJ Global Concept Limited`);
+  const [flyerUrl, setFlyerUrl] = useState("");
+  const [flyerPosition, setFlyerPosition] = useState<"top" | "below">("top");
+  const [flyerLink, setFlyerLink] = useState("");
   const [when, setWhen] = useState<"now" | "later">("now");
   const [count, setCount] = useState<number | null>(null);
   const [, startCount] = useTransition();
@@ -60,10 +64,10 @@ export function BroadcastComposer({ brand, userName, userEmail, groups }: { bran
     const c = { firstName: first, lastName: rest.join(" "), preferredName: null, organisation: null, department: null, jobTitle: null };
     return renderEmail({
       subject, preheader: headline,
-      blocks: buildBroadcastBlocks({ kind, subject, headline, message, buttonLabel, buttonUrl, signOff }),
+      blocks: buildBroadcastBlocks({ kind, subject, headline, message, buttonLabel, buttonUrl, signOff, flyerUrl, flyerPosition, flyerLink }),
       vars: contactVars(c, { brand, senderName: userName }), flags: contactFlags(internal ? "STAFF" : "CUSTOMER"), brand,
     }).html;
-  }, [kind, group, subject, headline, message, buttonLabel, buttonUrl, signOff, brand, userName]);
+  }, [kind, group, subject, headline, message, buttonLabel, buttonUrl, signOff, flyerUrl, flyerPosition, flyerLink, brand, userName]);
 
   const edit = <T,>(set: (v: T) => void) => (v: T) => { setTouched(true); set(v); };
   const marketingWarning = BROADCAST_KINDS[kind].marketing && BROADCAST_GROUPS[group].audience !== "INTERNAL";
@@ -113,6 +117,31 @@ export function BroadcastComposer({ brand, userName, userEmail, groups }: { bran
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="block"><span className="label">Button text (optional)</span><input className="input" name="buttonLabel" value={buttonLabel} onChange={(e) => setButtonLabel(e.target.value)} placeholder="e.g. Join the meeting" /></label>
             <label className="block"><span className="label">Button link</span><input className="input" name="buttonUrl" value={buttonUrl} onChange={(e) => setButtonUrl(e.target.value)} placeholder="https://" /></label>
+          </div>
+          <div className="rounded-2xl border border-dashed border-line p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div><div className="text-sm font-semibold text-navy">Flyer (optional)</div><div className="text-xs text-muted">Add an event flyer, advert or poster. It is sent inside the email.</div></div>
+              <div className="flex items-center gap-2">
+                <FlyerUpload label={flyerUrl ? "Replace flyer" : "Upload flyer"} onUploaded={(url) => setFlyerUrl(url)} />
+                {flyerUrl && <button type="button" className="btn-ghost text-xs" onClick={() => setFlyerUrl("")}>Remove</button>}
+              </div>
+            </div>
+            <input type="hidden" name="flyerUrl" value={flyerUrl} />
+            <input type="hidden" name="flyerPosition" value={flyerPosition} />
+            {flyerUrl && (
+              <div className="mt-3 grid gap-3 sm:grid-cols-[140px_1fr]">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={flyerUrl} alt="Flyer" className="max-h-40 w-full rounded-xl bg-canvas object-contain ring-1 ring-line" />
+                <div className="space-y-3">
+                  <div className="flex flex-wrap gap-2">
+                    {(["top", "below"] as const).map((p) => (
+                      <button type="button" key={p} onClick={() => setFlyerPosition(p)} className={cn("rounded-full border px-3 py-1.5 text-xs font-semibold transition", p === flyerPosition ? "border-navy bg-navy text-white" : "border-line text-navy hover:border-navy")}>{p === "top" ? "At the top (replaces artwork)" : "Below the message"}</button>
+                    ))}
+                  </div>
+                  <label className="block"><span className="label">When the flyer is clicked, open (optional)</span><input className="input" name="flyerLink" value={flyerLink} onChange={(e) => setFlyerLink(e.target.value)} placeholder="https://" /></label>
+                </div>
+              </div>
+            )}
           </div>
           <label className="block"><span className="label">Sign-off</span><textarea className="input min-h-[80px]" name="signOff" value={signOff} onChange={(e) => setSignOff(e.target.value)} /></label>
         </section>

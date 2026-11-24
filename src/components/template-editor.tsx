@@ -8,6 +8,7 @@ import { BLOCK_LABELS, EMAIL_ART, bid, newBlock, type BlockType, type EmailBlock
 import { analysePlaceholders, blockTexts, contactFlags, contactVars, findInvalidLinks, PLACEHOLDERS, CONDITION_FLAGS, renderEmail, type Brand } from "@/lib/email/render";
 import { aiDraft, restoreVersion, saveTemplateVersion, sendTest } from "@/actions/templates";
 import { ActionButton } from "./forms";
+import { FlyerUpload } from "./flyer-upload";
 import { cn } from "@/lib/utils";
 
 type PreviewContact = { id: string; firstName: string; lastName: string; preferredName: string | null; organisation: string | null; department: string | null; jobTitle: string | null; category: string };
@@ -268,15 +269,31 @@ function BlockFields({ b, update, track, disabled, media }: { b: EmailBlock; upd
     case "signature": return text("text", b.text, "Signature", true);
     case "footer": return text("text", b.text, "Footer note");
     case "button": return <div className="grid gap-2 md:grid-cols-2">{text("label", b.label, "Button label")}{text("url", b.url, "Link URL")}</div>;
-    case "image": return <div className="space-y-2">{text("url", b.url, "Image URL (https://…)")}{mediaPicker("url")}{text("alt", b.alt, "Alt text")}</div>;
+    case "image": return (
+      <div className="space-y-2">
+        {b.url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={b.url} alt="" className="max-h-48 w-full rounded-xl bg-canvas object-contain ring-1 ring-line" />
+        ) : <p className="rounded-xl bg-canvas px-3 py-4 text-center text-xs text-muted">No flyer yet. Upload one, or pick from the media library.</p>}
+        {!disabled && <FlyerUpload label={b.url ? "Replace flyer" : "Upload flyer"} onUploaded={(url, name) => update(b.id, { url, alt: b.alt || name } as Partial<EmailBlock>)} />}
+        {mediaPicker("url")}
+        {text("link", b.link, "When clicked, open (optional link)")}
+        {text("alt", b.alt, "Description (shown if images are blocked)")}
+        <label className="flex items-center gap-2 text-xs text-navy"><input type="checkbox" checked={!!b.full} disabled={disabled} onChange={(e) => update(b.id, { full: e.target.checked } as Partial<EmailBlock>)} /> Full width (flyer style)</label>
+        <details className="text-xs text-muted"><summary className="cursor-pointer">Use an image link instead</summary><div className="mt-2">{text("url", b.url, "Image URL (https://…)")}</div></details>
+      </div>
+    );
     case "banner": return (
       <div className="space-y-2">
         {text("title", b.title, "Banner title")}
         {text("subtitle", b.subtitle, "Subtitle")}
         <label className="block"><span className="label">Artwork</span><select className="input" value={b.art ?? ""} disabled={disabled} onChange={(e) => update(b.id, { art: e.target.value || undefined } as Partial<EmailBlock>)}><option value="">None – coloured band</option>{EMAIL_ART.map((a) => <option key={a.key} value={a.key}>{a.label}</option>)}</select></label>
         {!b.art && <label className="block"><span className="label">Band colour</span><select className="input" value={b.tone ?? "brand"} disabled={disabled} onChange={(e) => update(b.id, { tone: e.target.value } as Partial<EmailBlock>)}><option value="brand">AOJ red</option><option value="navy">Charcoal</option><option value="festive">Festive red & gold</option><option value="soft">Soft</option></select></label>}
-        {text("imageUrl", b.imageUrl, "Banner image URL (optional)")}
+        <span className="label">Your own banner picture (replaces the artwork)</span>
+        {!disabled && <FlyerUpload label={b.imageUrl ? "Replace picture" : "Upload picture"} kind="Banner" onUploaded={(url) => update(b.id, { imageUrl: url } as Partial<EmailBlock>)} />}
         {mediaPicker("imageUrl")}
+        {text("imageUrl", b.imageUrl, "…or image URL")}
+        {b.imageUrl && !disabled && <button type="button" className="text-xs font-semibold text-brand" onClick={() => update(b.id, { imageUrl: "" } as Partial<EmailBlock>)}>Remove picture, use artwork</button>}
       </div>
     );
   }

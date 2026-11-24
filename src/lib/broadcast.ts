@@ -29,6 +29,12 @@ export type BroadcastInput = {
   buttonLabel?: string;
   buttonUrl?: string;
   signOff: string;
+  /** Optional flyer (uploaded /email/media/<id> path or https link). */
+  flyerUrl?: string;
+  /** "top" replaces the occasion artwork; "below" places the flyer under the message. */
+  flyerPosition?: "top" | "below";
+  /** Optional link opened when the flyer is clicked. */
+  flyerLink?: string;
 };
 
 /** Literal user text must not be treated as {{placeholders}} except the greeting we add. */
@@ -36,12 +42,18 @@ const lit = (t: string) => t.replace(/\{\{|\}\}/g, "");
 
 export function buildBroadcastBlocks(i: BroadcastInput): EmailBlock[] {
   const k = BROADCAST_KINDS[i.kind] ?? BROADCAST_KINDS.announcement;
-  const blocks: EmailBlock[] = [
-    { id: "logo", type: "logo" },
-    { id: "banner", type: "banner", art: k.art, title: lit(i.headline || i.subject), subtitle: k.eyebrow },
+  const flyer = i.flyerUrl ? lit(i.flyerUrl) : "";
+  const top = flyer && i.flyerPosition !== "below";
+  const title = lit(i.headline || i.subject);
+  const blocks: EmailBlock[] = [{ id: "logo", type: "logo" }];
+  blocks.push(top
+    ? { id: "banner", type: "banner", art: k.art, imageUrl: flyer, link: lit(i.flyerLink ?? ""), title, subtitle: k.eyebrow }
+    : { id: "banner", type: "banner", art: k.art, title, subtitle: k.eyebrow });
+  blocks.push(
     { id: "greet", type: "heading", text: "Dear {{first_name}}," },
     { id: "body", type: "paragraph", text: lit(i.message) },
-  ];
+  );
+  if (flyer && !top) blocks.push({ id: "flyer", type: "image", url: flyer, alt: title, link: lit(i.flyerLink ?? ""), full: true });
   if (i.buttonLabel && i.buttonUrl) blocks.push({ id: "cta", type: "button", label: lit(i.buttonLabel), url: lit(i.buttonUrl) });
   blocks.push({ id: "sign", type: "signature", text: lit(i.signOff || "Regards,\n**Management**\nAOJ Global Concept Limited") }, { id: "contact", type: "contact" });
   return blocks;

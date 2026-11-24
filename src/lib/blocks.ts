@@ -1,10 +1,10 @@
 // Email block model shared by the editor, renderer and seed catalogue.
 export type EmailBlock =
   | { id: string; type: "logo" }
-  | { id: string; type: "banner"; art?: string; imageUrl?: string; title?: string; subtitle?: string; tone?: "brand" | "navy" | "festive" | "soft" }
+  | { id: string; type: "banner"; art?: string; imageUrl?: string; link?: string; title?: string; subtitle?: string; tone?: "brand" | "navy" | "festive" | "soft" }
   | { id: string; type: "heading"; text: string }
   | { id: string; type: "paragraph"; text: string }
-  | { id: string; type: "image"; url: string; alt?: string }
+  | { id: string; type: "image"; url: string; alt?: string; link?: string; full?: boolean }
   | { id: string; type: "button"; label: string; url: string }
   | { id: string; type: "divider" }
   | { id: string; type: "signature"; text: string }
@@ -42,7 +42,7 @@ export const BLOCK_LABELS: Record<BlockType, string> = {
   banner: "Banner",
   heading: "Heading",
   paragraph: "Paragraph",
-  image: "Image",
+  image: "Image / flyer",
   button: "Button",
   divider: "Divider",
   signature: "Signature",
@@ -61,7 +61,7 @@ export function newBlock(type: BlockType): EmailBlock {
     case "banner": return { id, type, art: "announcement", title: "{{event_name}}", subtitle: "", tone: "brand" };
     case "heading": return { id, type, text: "Heading" };
     case "paragraph": return { id, type, text: "Write your message here." };
-    case "image": return { id, type, url: "", alt: "" };
+    case "image": return { id, type, url: "", alt: "", link: "", full: true };
     case "button": return { id, type, label: "Visit our website", url: "{{company_website}}" };
     case "divider": return { id, type };
     case "signature": return { id, type, text: "Warm regards,\n{{sender_name}}\n{{company_name}}" };

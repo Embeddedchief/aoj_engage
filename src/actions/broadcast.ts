@@ -29,7 +29,12 @@ function readInput(fd: FormData): BroadcastInput & { group: BroadcastGroup } {
     buttonLabel: str(fd, "buttonLabel").slice(0, 60),
     buttonUrl: str(fd, "buttonUrl").slice(0, 500),
     signOff: str(fd, "signOff").slice(0, 300),
+    flyerUrl: str(fd, "flyerUrl").slice(0, 500),
+    flyerPosition: (str(fd, "flyerPosition") === "below" ? "below" : "top") as "top" | "below",
+    flyerLink: str(fd, "flyerLink").slice(0, 500),
   };
+  if (input.flyerUrl && !/^\/email\/media\/[a-z0-9]+$/i.test(input.flyerUrl) && !/^https:\/\//i.test(input.flyerUrl)) throw new Error("Upload the flyer again: its address is not valid.");
+  if (input.flyerLink && !isSafeUrl(input.flyerLink)) throw new Error("The flyer link must start with https://");
   if (!input.subject) throw new Error("Enter a subject line.");
   if (input.message.length < 5) throw new Error("Write the message.");
   if (input.buttonUrl && !isSafeUrl(input.buttonUrl)) throw new Error("The button link must start with https://");

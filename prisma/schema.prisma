@@ -452,7 +452,13 @@ model MediaAsset {
   id        String   @id @default(cuid())
   name      String
   url       String
-  kind      String // Logo, Banner, Project, Festive, Photo, Signature, Icon
+  kind      String // Logo, Banner, Flyer, Project, Festive, Photo, Signature, Icon
+  // Uploaded files live here and are served publicly at /email/media/<id> so email clients can load them.
+  data      Bytes?
+  mime      String?
+  size      Int?
+  width     Int?
+  height    Int?
   createdBy String?
   createdAt DateTime @default(now())
 }

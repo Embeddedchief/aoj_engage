@@ -182,6 +182,40 @@ export async function addMedia(_: ActionResult | null, fd: FormData): Promise<Ac
   });
 }
 
+const MAX_UPLOAD = 4 * 1024 * 1024;
+
+/** Detect the real image type from the file's first bytes (never trust the browser-supplied type). SVG is refused: it can carry scripts. */
+function sniffImage(b: Buffer): string | null {
+  if (b.length > 8 && b[0] === 0x89 && b.toString("ascii", 1, 4) === "PNG") return "image/png";
+  if (b.length > 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return "image/jpeg";
+  if (b.length > 6 && b.toString("ascii", 0, 4) === "GIF8") return "image/gif";
+  if (b.length > 12 && b.toString("ascii", 0, 4) === "RIFF" && b.toString("ascii", 8, 12) === "WEBP") return "image/webp";
+  return null;
+}
+
+/** Upload a flyer / image. Returns its public URL in `data.url` for the template editor and broadcast composer. */
+export async function uploadMedia(_: ActionResult | null, fd: FormData): Promise<ActionResult> {
+  return run(async () => {
+    const u = await assertPermission("media:write");
+    const file = fd.get("file");
+    if (!(file instanceof File) || file.size === 0) throw new Error("Choose an image to upload.");
+    if (file.size > MAX_UPLOAD) throw new Error("That image is larger than 4 MB. Save it smaller (e.g. export as JPG) and try again.");
+    const bytes = Buffer.from(await file.arrayBuffer());
+    const mime = sniffImage(bytes);
+    if (!mime) throw new Error("Only JPG, PNG, GIF or WebP images can be uploaded.");
+    const dim = (k: string) => { const n = Number(str(fd, k)); return Number.isInteger(n) && n > 0 && n < 20000 ? n : null; };
+    const name = (str(fd, "name") || file.name.replace(/\.[a-z0-9]+$/i, "") || "Flyer").slice(0, 80);
+    const asset = await prisma.mediaAsset.create({
+      data: { name, url: "", kind: str(fd, "kind") || "Flyer", data: bytes, mime, size: bytes.length, width: dim("width"), height: dim("height"), createdBy: u.name },
+      select: { id: true },
+    });
+    const url = `/email/media/${asset.id}`;
+    await prisma.mediaAsset.update({ where: { id: asset.id }, data: { url } });
+    await audit(u.id, "media.uploaded", "MediaAsset", asset.id, `${name} (${Math.round(bytes.length / 1024)} KB)`);
+    return { ok: true, message: "Uploaded to the media library.", data: { url, name } };
+  });
+}
+
 export async function deleteMedia(_: ActionResult | null, fd: FormData): Promise<ActionResult> {
   return run(async () => {
     const u = await assertPermission("media:write");
